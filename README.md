@@ -2,6 +2,13 @@
 
 Repositório pessoal de configuração do Claude Code.
 
+## Contexto do usuário
+
+[`CLAUDE.md`](CLAUDE.md) guarda meu contexto pessoal (quem sou, situação de
+trabalho, capacidade real de horas, stack e projetos ativos). O Claude Code
+carrega esse arquivo automaticamente em qualquer sessão aberta neste
+repositório, então não preciso reexplicar o básico a cada conversa.
+
 ## Skills instaladas
 
 | Skill | O que faz | Como usar |
