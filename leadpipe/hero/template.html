@@ -41,13 +41,34 @@ h1{font-size:clamp(28px,7.5vw,40px);font-weight:800;line-height:1.08;letter-spac
 .trust{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:14px 16px 22px}
 .trust div{background:#f8fafc;border-radius:12px;padding:12px 8px;text-align:center;font-size:13px;font-weight:600;color:var(--ink)}
 .trust b{display:block;font-size:20px;color:var(--p);font-weight:800}
-.gallery{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 16px 20px}
-.gallery img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}
+.trust b.stars{color:#fbbf24}
+.stars{color:#fbbf24;letter-spacing:1px;font-size:15px}
+.strip{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 16px 20px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.strip figure{flex:0 0 78%;scroll-snap-align:start;position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:#e2e8f0}
+.strip img{width:100%;height:100%;object-fit:cover;display:block}
+.strip figcaption{position:absolute;left:8px;top:8px;background:rgba(15,23,42,.8);color:#fff;font-size:12px;font-weight:700;padding:4px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.04em}
+.reviews{padding:6px 16px 8px}
+.reviews h2,.map h2{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--mute);margin-bottom:10px}
+.rv{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:6px}
+.rv::-webkit-scrollbar{display:none}
+.rv article{flex:0 0 84%;scroll-snap-align:start;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.rv .who{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.rv .av{width:38px;height:38px;border-radius:50%;background:var(--p);color:var(--tp);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+.rv .nm{font-weight:700;font-size:14px}
+.rv .dt{font-size:12px;color:var(--mute)}
+.rv p{font-size:14px;color:#334155;line-height:1.45}
+.rv .g{margin-top:8px;font-size:11px;color:var(--mute)}
+.map{padding:14px 16px 20px}
+.map .frame{border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;aspect-ratio:4/3;background:#e2e8f0}
+.map iframe{width:100%;height:100%;border:0;display:block}
+.map .area{margin-top:8px;text-align:center;font-size:13px;color:var(--mute)}
+.map a.dir{display:block;text-align:center;font-weight:700;color:var(--p);text-decoration:none;min-height:44px;line-height:44px;white-space:nowrap}
 .bottom{position:fixed;left:0;right:0;bottom:0;z-index:3;transform:translateY(110%);transition:transform .25s;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-top:1px solid #e2e8f0}
 .bottom.on{transform:none}
 body.pad{padding-bottom:90px}
 footer{padding:16px;text-align:center;font-size:12px;color:var(--mute)}
-@media(min-width:768px){.hero{min-height:560px}.hero .body{max-width:720px;margin:0 auto;padding:40px 24px}.ba,.services,.trust,.gallery,.bottom{max-width:720px;margin-left:auto;margin-right:auto}}
+@media(min-width:768px){.hero{min-height:560px}.hero .body{max-width:720px;margin:0 auto;padding:40px 24px}.ba,.services,.trust,.strip,.reviews,.map,.bottom{max-width:720px;margin-left:auto;margin-right:auto}}
 </style>
 </head>
 <body>
@@ -63,17 +84,18 @@ footer{padding:16px;text-align:center;font-size:12px;color:var(--mute)}
   {% if hero_image %}<div class="img"><img src="{{ hero_image }}" alt="{{ name }} — {{ vertical_title }} in {{ city }}"></div>
   {% else %}<div class="img gen"></div>{% endif %}
   <div class="body">
-    {% if rating %}<div class="badge"><span class="star">★</span> {{ "%.1f"|format(rating) }}{% if review_count %} · {{ review_count }} Google reviews{% endif %}</div>{% endif %}
+    {% if rating %}<div class="badge"><span class="stars">{{ "★" * stars }}{{ "☆" * (5 - stars) }}</span>{% if review_count %} · {{ review_count }} Google reviews{% endif %}</div>{% endif %}
     <h1>{{ tagline }}</h1>
     <p class="sub">{{ sub }}</p>
     <a class="cta" href="tel:{{ phone_e164 }}">Call Now <small>{{ phone_display }}</small></a>
   </div>
 </section>
 
-{% if before and after %}
-<section class="ba">
-  <figure><img src="{{ before }}" alt="Before"><figcaption>Before</figcaption></figure>
-  <figure><img src="{{ after }}" alt="After"><figcaption>After</figcaption></figure>
+{% if before or after or gallery %}
+<section class="strip" aria-label="Our work">
+  {% if before %}<figure><img src="{{ before }}" alt="Before"><figcaption>Before</figcaption></figure>{% endif %}
+  {% if after %}<figure><img src="{{ after }}" alt="After"><figcaption>After</figcaption></figure>{% endif %}
+  {% for g in gallery %}<figure><img src="{{ g }}" alt="{{ name }} work photo"></figure>{% endfor %}
 </section>
 {% endif %}
 
@@ -83,13 +105,33 @@ footer{padding:16px;text-align:center;font-size:12px;color:var(--mute)}
 </section>
 
 <section class="trust">
-  <div><b>{{ "%.1f"|format(rating) if rating else "★" }}</b>{{ "Google rating" if rating else "Local & trusted" }}</div>
+  <div><b class="stars" style="font-size:16px">{{ "★" * (stars if rating else 5) }}</b>{{ "Google rating" if rating else "Local & trusted" }}</div>
   <div><b>{{ review_count if review_count else "✓" }}</b>{{ "reviews" if review_count else "Insured" }}</div>
   <div><b>Free</b>estimates</div>
 </section>
 
-{% if gallery %}
-<section class="gallery">{% for g in gallery %}<img src="{{ g }}" alt="{{ name }} work photo">{% endfor %}</section>
+{% if reviews %}
+<section class="reviews">
+  <h2>What customers say</h2>
+  <div class="rv">
+  {% for r in reviews %}
+    <article>
+      <div class="who"><div class="av">{{ r.initial }}</div><div><div class="nm">{{ r.author }}</div><div class="stars">{{ "★" * (r.rating or 5) }}</div></div>{% if r.date_text %}<div class="dt" style="margin-left:auto">{{ r.date_text }}</div>{% endif %}</div>
+      <p>{{ r.text }}</p>
+      <div class="g">Google review</div>
+    </article>
+  {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if map_embed %}
+<section class="map">
+  <h2>Location</h2>
+  <div class="frame"><iframe src="{{ map_embed }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Map of {{ name }}"></iframe></div>
+  <div class="area">Serving {{ service_area }}{% if state %}, {{ state }}{% endif %} and surrounding areas</div>
+  {% if map_link %}<a class="dir" href="{{ map_link }}" target="_blank" rel="noopener">Get directions →</a>{% endif %}
+</section>
 {% endif %}
 
 <div class="bottom" id="bottom"><a class="cta" href="tel:{{ phone_e164 }}">{{ cta }} · {{ phone_display }}</a></div>

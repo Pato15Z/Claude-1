@@ -385,6 +385,7 @@ def enrich_run(
     no_search: bool = typer.Option(False, help="não busca Facebook/Instagram na web"),
     no_gbp: bool = typer.Option(False, help="não abre o Google Maps para fotos"),
     only: Optional[str] = typer.Option(None, help="só leads com este site_status, ex: SEM_SITE"),
+    id: Optional[int] = typer.Option(None, "--id", help="só este lead (refaz mesmo se já ENRIQUECIDO)"),
 ):
     """Para leads QUALIFICADO: email, Facebook/Instagram, 3–6 imagens, logo, paleta → ENRIQUECIDO."""
     from .enrich.runner import run
@@ -397,8 +398,8 @@ def enrich_run(
         else:
             con_.print(f"  #{lead['id']:<5} img={r['images']} email={'✓' if r['email'] else '·'} fb={'✓' if r['fb'] else '·'} logo={'✓' if r['logo'] else '·'}  {lead['name'][:40]}")
 
-    agg = asyncio.run(run(con, limit=limit, redo=redo, web_search=not no_search, gbp=not no_gbp, progress=progress,
-                          site_status=only.upper() if only else None))
+    agg = asyncio.run(run(con, limit=limit, redo=redo or id is not None, web_search=not no_search, gbp=not no_gbp, progress=progress,
+                          site_status=only.upper() if only else None, lead_id=id))
     if not agg:
         con_.print("nada a enriquecer (nenhum lead QUALIFICADO)"); return
     n = agg["leads"] or 1
@@ -427,6 +428,7 @@ def hero_build(
     include_low: bool = typer.Option(False, help="inclui leads sem imagem (hero com fundo genérico)"),
     rebuild: bool = typer.Option(False, help="regenera também os já HERO_PRONTO"),
     only: Optional[str] = typer.Option(None, help="só leads com este site_status, ex: SEM_SITE"),
+    id: Optional[int] = typer.Option(None, "--id", help="só este lead (regenera)"),
 ):
     """Gera os heros em batch em data/hero_site/{slug}/ e marca HERO_PRONTO."""
     from .hero.build import build
@@ -438,8 +440,8 @@ def hero_build(
     def progress(lead, url, has_img):
         con_.print(f"  #{lead['id']:<5} {'🖼' if has_img else '▫'} {url}")
 
-    r = build(con, limit=limit, include_low_priority=include_low, rebuild=rebuild, progress=progress,
-              site_status=only.upper() if only else None)
+    r = build(con, limit=limit, include_low_priority=include_low or id is not None, rebuild=rebuild or id is not None, progress=progress,
+              site_status=only.upper() if only else None, lead_id=id)
     if not r:
         con_.print("nada a gerar (nenhum lead ENRIQUECIDO com prioridade normal; use --include-low)"); return
     con_.print(f"[bold]{r['built']} heros em {r['_elapsed_s']}s → {r['site_dir']}  (erros: {r['errors']})[/bold]")
@@ -499,6 +501,7 @@ def hero_shot(lead_id: Optional[int] = typer.Argument(None, help="vazio = todos 
                     pg = await ctx.new_page()
                     await pg.goto(Path(r["hero_path"], "index.html").resolve().as_uri())
                     await pg.wait_for_timeout(400)
+                    await pg.evaluate("var b=document.getElementById('bottom'); if(b) b.remove(); document.body.classList.remove('pad')")
                     out = Path(r["hero_path"]) / "preview.png"
                     await pg.screenshot(path=str(out), full_page=True)
                     await pg.close()

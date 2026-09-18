@@ -30,6 +30,12 @@ def test_build_and_slug_dedup(con, monkeypatch):
     monkeypatch.setattr(config, "HERO_SITE_DIR", config.DATA_DIR / "hero_site")
     monkeypatch.setattr(config, "HERO_DOMAIN", "heros.test")
     a = _enriched(con, "Bob's Roof Cleaning", "614-555-0101")
+    db.update_lead(con, a, lat=39.96, lng=-82.99)
+    for i, (auth, rt, txt) in enumerate([("Eileen A", 5, "Fantastic job, roof looks brand new and the crew was on time."),
+                                          ("Sam", 4, "Good work overall, a bit late but thorough."),
+                                          ("Donna", 5, "Perfect. Cleaned up afterward and hosed the driveway down. Couldn't be happier."),
+                                          ("X", 5, "ok")]):
+        con.execute("INSERT INTO lead_reviews (lead_id, author, rating, date_text, text, created_at) VALUES (?,?,?,?,?,?)", (a, auth, rt, "a week ago", txt, db.now_iso()))
     b = _enriched(con, "Bob's Roof Cleaning", "614-555-0102")
     c = _enriched(con, "No Pics LLC", "614-555-0103", with_images=False)
     r = build(con)
@@ -39,7 +45,10 @@ def test_build_and_slug_dedup(con, monkeypatch):
     assert la["hero_url"] == "https://bob-s-roof-cleaning-columbus.heros.test" and la["status"] == "HERO_PRONTO"
     assert lc["status"] == "ENRIQUECIDO"  # prioridade baixa não entra sem --include-low
     html = Path(la["hero_path"], "index.html").read_text()
-    assert 'href="tel:+16145550101"' in html and "Bob&#39;s Roof Cleaning" in html and "Before" in html and "4.8" in html
+    assert 'href="tel:+16145550101"' in html and "Bob&#39;s Roof Cleaning" in html and "Before" in html
+    assert "4.8" not in html and "★★★★★" in html          # só estrelas, sem número
+    assert html.count("<article>") == 3 and "Eileen A" in html and ">X<" not in html   # 3 melhores, curtas fora
+    assert "maps?q=39.96,-82.99" in html and "Get directions" in html
     assert (Path(la["hero_path"]) / "img" / "before.jpg").exists() and (Path(la["hero_path"]) / "hero.json").exists()
     assert (config.HERO_SITE_DIR / "vercel.json").exists()
     r2 = build(con, include_low_priority=True)

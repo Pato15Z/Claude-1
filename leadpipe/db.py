@@ -150,6 +150,18 @@ CREATE TABLE IF NOT EXISTS clients (
     notes       TEXT
 );
 
+-- Avaliações do Google (módulo 3), usadas no hero.
+CREATE TABLE IF NOT EXISTS lead_reviews (
+    id          INTEGER PRIMARY KEY,
+    lead_id     INTEGER NOT NULL REFERENCES leads(id),
+    author      TEXT,
+    rating      INTEGER,
+    date_text   TEXT,
+    text        TEXT,
+    source      TEXT DEFAULT 'gbp',
+    created_at  TEXT NOT NULL
+);
+
 -- Imagens baixadas (módulo 3, tabela já criada para não migrar depois).
 CREATE TABLE IF NOT EXISTS lead_images (
     id          INTEGER PRIMARY KEY,

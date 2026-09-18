@@ -89,9 +89,16 @@ async def enrich_lead(con: sqlite3.Connection, ctx, lead: sqlite3.Row, sem: asyn
         # imagens: GBP primeiro, depois site
         candidates: list[dict] = []
         if gbp and ctx is not None and lead["gbp_url"]:
-            urls, gbp_site = await gbp_photos.collect(ctx, lead["gbp_url"])
+            g = await gbp_photos.collect(ctx, lead["gbp_url"])
+            urls, gbp_site, reviews = g["photos"], g["website"], g["reviews"]
             candidates += [{"url": u, "alt": "gbp photo", "source": "gbp"} for u in urls]
-            notes.append(f"gbp: {len(urls)} fotos")
+            notes.append(f"gbp: {len(urls)} fotos, {len(reviews)} avaliações")
+            if reviews:
+                with db.tx(con):
+                    con.execute("DELETE FROM lead_reviews WHERE lead_id=?", (lead["id"],))
+                    for r in reviews:
+                        con.execute("INSERT INTO lead_reviews (lead_id, author, rating, date_text, text, created_at) VALUES (?,?,?,?,?,?)",
+                                    (lead["id"], r["author"], r["rating"], r["date_text"], r["text"], db.now_iso()))
             # Rede de segurança do modo caça: a ficha diz que TEM site → reclassifica.
             if gbp_site and not lead["website_url"] and not is_aggregator(gbp_site):
                 db.update_lead(con, lead["id"], website_url=gbp_site)
@@ -125,7 +132,7 @@ async def enrich_lead(con: sqlite3.Connection, ctx, lead: sqlite3.Row, sem: asyn
 
 
 async def run(con: sqlite3.Connection, limit: int | None = None, redo: bool = False, web_search: bool | None = None,
-              gbp: bool = True, progress=None, site_status: str | None = None) -> dict:
+              gbp: bool = True, progress=None, site_status: str | None = None, lead_id: int | None = None) -> dict:
     from playwright.async_api import async_playwright
 
     web_search = config.ENRICH_WEB_SEARCH if web_search is None else web_search
@@ -133,6 +140,8 @@ async def run(con: sqlite3.Connection, limit: int | None = None, redo: bool = Fa
     sql = f"SELECT * FROM leads WHERE status IN {st}"
     if site_status:
         sql += f" AND site_status='{site_status}'"
+    if lead_id:
+        sql += f" AND id={int(lead_id)}"
     sql += " ORDER BY CASE site_status WHEN 'SEM_SITE' THEN 0 ELSE 1 END, id"
     if limit:
         sql += f" LIMIT {int(limit)}"

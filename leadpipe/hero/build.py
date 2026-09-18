@@ -15,6 +15,7 @@ import sqlite3
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import quote_plus
 
 import phonenumbers
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -72,12 +73,27 @@ def hero_data(con: sqlite3.Connection, lead: sqlite3.Row, site_dir: Path) -> dic
         from ..enrich.palette import build_palette
         pal = build_palette(lead["vertical"], None, [])
     c = content_for(lead["vertical"], lead["city"])
+    # 3 melhores avaliações: 5 estrelas primeiro, depois as mais longas (até 260 chars)
+    revs = con.execute("SELECT author, rating, date_text, text FROM lead_reviews WHERE lead_id=? AND text IS NOT NULL AND length(text) > 15", (lead["id"],)).fetchall()
+    revs = sorted((dict(r) for r in revs), key=lambda r: (-(r["rating"] or 0), -min(len(r["text"]), 260)))[:3]
+    for r in revs:
+        r["text"] = (r["text"][:257] + "…") if len(r["text"]) > 260 else r["text"]
+        r["initial"] = (r["author"] or "G")[0].upper()
+    # mapa: embed do Google sem chave de API; centra na coordenada ou no endereço
+    if lead["lat"] is not None and lead["lng"] is not None:
+        map_q = f"{lead['lat']},{lead['lng']}"
+    else:
+        map_q = ", ".join(x for x in (lead["address_full"] or "", lead["city"] or "", lead["state"] or "") if x) or None
+    map_embed = f"https://www.google.com/maps?q={quote_plus(map_q, safe=',')}&z=11&output=embed" if map_q else None
     data = {
         "slug": slug,
         "name": lead["name"], "city": lead["city"] or "", "state": lead["state"] or "",
         "vertical": lead["vertical"], "vertical_title": lead["vertical"].title(),
         "phone_e164": lead["phone_e164"] or "", "phone_display": phone_display(lead["phone_e164"]),
         "rating": lead["rating"], "review_count": lead["review_count"],
+        "stars": round(lead["rating"] or 0), "reviews": revs,
+        "map_embed": map_embed, "map_link": lead["gbp_url"] or (f"https://www.google.com/maps/search/{quote_plus(map_q, safe=',')}" if map_q else None),
+        "service_area": lead["city"] or "",
         "tagline": c["tagline"], "sub": c["sub"], "services": c["services"], "cta": c["cta"],
         "hero_image": copy(hero_img, "hero") if hero_img else None,
         "before": copy(before, "before") if before else None,
@@ -127,7 +143,7 @@ def write_site_scaffold(site_dir: Path, domain: str) -> None:
 
 
 def build(con: sqlite3.Connection, limit: int | None = None, include_low_priority: bool = False, rebuild: bool = False,
-          progress=None, site_status: str | None = None) -> dict:
+          progress=None, site_status: str | None = None, lead_id: int | None = None) -> dict:
     site_dir = config.HERO_SITE_DIR
     write_site_scaffold(site_dir, config.HERO_DOMAIN)
     where = "status IN ('ENRIQUECIDO','HERO_PRONTO')" if rebuild else "status='ENRIQUECIDO'"
@@ -135,6 +151,8 @@ def build(con: sqlite3.Connection, limit: int | None = None, include_low_priorit
         where += " AND COALESCE(priority,'normal')<>'baixa'"
     if site_status:
         where += f" AND site_status='{site_status}'"
+    if lead_id:
+        where += f" AND id={int(lead_id)}"
     sql = f"SELECT * FROM leads WHERE {where} AND phone_e164 IS NOT NULL ORDER BY CASE site_status WHEN 'SEM_SITE' THEN 0 ELSE 1 END, id"
     if limit:
         sql += f" LIMIT {int(limit)}"
