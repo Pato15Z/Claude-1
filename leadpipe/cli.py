@@ -403,7 +403,8 @@ def enrich_run(
         con_.print("nada a enriquecer (nenhum lead QUALIFICADO)"); return
     n = agg["leads"] or 1
     con_.print(f"[bold]{agg['leads']} leads em {agg['_elapsed_s']}s ({agg['_elapsed_s'] / n:.1f}s/lead) — "
-               f"≥3 imagens {100 * agg['with_3_images'] / n:.0f}% · email {100 * agg['with_email'] / n:.0f}% · fb {100 * agg['with_fb'] / n:.0f}% · erros {agg['errors']}[/bold]")
+               f"≥3 imagens {100 * agg['with_3_images'] / n:.0f}% · email {100 * agg['with_email'] / n:.0f}% · fb {100 * agg['with_fb'] / n:.0f}% · erros {agg['errors']}"
+               f" · tinham site e foram descartados: {agg.get('requalified_with_site', 0)}[/bold]")
 
 
 @enrich_app.command("show")

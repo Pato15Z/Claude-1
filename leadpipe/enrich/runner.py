@@ -89,9 +89,18 @@ async def enrich_lead(con: sqlite3.Connection, ctx, lead: sqlite3.Row, sem: asyn
         # imagens: GBP primeiro, depois site
         candidates: list[dict] = []
         if gbp and ctx is not None and lead["gbp_url"]:
-            urls = await gbp_photos.collect(ctx, lead["gbp_url"])
+            urls, gbp_site = await gbp_photos.collect(ctx, lead["gbp_url"])
             candidates += [{"url": u, "alt": "gbp photo", "source": "gbp"} for u in urls]
             notes.append(f"gbp: {len(urls)} fotos")
+            # Rede de segurança do modo caça: a ficha diz que TEM site → reclassifica.
+            if gbp_site and not lead["website_url"] and not is_aggregator(gbp_site):
+                db.update_lead(con, lead["id"], website_url=gbp_site)
+                from ..qualify.runner import qualify_lead
+                fresh = db.get_lead(con, lead["id"])
+                st = await qualify_lead(con, ctx.browser, fresh, asyncio.Semaphore(1))
+                if st == "SITE_OK":
+                    return {"images": 0, "email": False, "fb": False, "logo": False, "requalified": st}
+                notes.append(f"tinha site ({st})")
         candidates += site["images"]
         img_dir = config.IMAGES_DIR / str(lead["id"])
         saved, rejected = await asyncio.to_thread(save_candidates, lead["id"], candidates, img_dir, None, False, config.ENRICH_MAX_IMAGES)
@@ -133,7 +142,7 @@ async def run(con: sqlite3.Connection, limit: int | None = None, redo: bool = Fa
     config.ensure_dirs()
     run_id = db.start_run(con, "enrich", f"n={len(leads)}")
     t0 = time.time()
-    agg = {"leads": 0, "with_3_images": 0, "with_email": 0, "with_fb": 0, "errors": 0}
+    agg = {"leads": 0, "with_3_images": 0, "with_email": 0, "with_fb": 0, "errors": 0, "requalified_with_site": 0}
     sem = asyncio.Semaphore(config.ENRICH_CONCURRENCY)
     async with async_playwright() as pw:
         browser = None; ctx = None
@@ -147,6 +156,11 @@ async def run(con: sqlite3.Connection, limit: int | None = None, redo: bool = Fa
             async def one(lead):
                 try:
                     r = await enrich_lead(con, ctx, lead, sem, web_search, gbp)
+                    if r.get("requalified") == "SITE_OK":
+                        agg["requalified_with_site"] += 1
+                        if progress:
+                            progress(lead, r)
+                        return
                     agg["leads"] += 1
                     agg["with_3_images"] += r["images"] >= 3
                     agg["with_email"] += r["email"]

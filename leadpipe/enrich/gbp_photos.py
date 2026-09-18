@@ -22,13 +22,22 @@ def _big(url: str) -> str:
     return url + "=w1600-k-no"
 
 
-async def collect(ctx, gbp_url: str, max_photos: int = 12) -> list[str]:
+async def collect(ctx, gbp_url: str, max_photos: int = 12) -> tuple[list[str], str | None]:
+    """Retorna (urls de fotos, site declarado na ficha ou None). O site é lido
+    aqui de novo porque o modo caça só olhou o card; a ficha é a fonte final."""
     page = await ctx.new_page()
     urls: list[str] = []
+    website: str | None = None
     try:
         await page.goto(gbp_url + ("&hl=en" if "?" in gbp_url else "?hl=en"), timeout=config.MAPS_NAV_TIMEOUT_MS,
                         wait_until="domcontentloaded")
         await page.wait_for_timeout(1500)
+        try:
+            w = page.locator('a[data-item-id="authority"]').first
+            if await w.count():
+                website = await w.get_attribute("href")
+        except Exception:
+            pass
         try:
             btn = page.locator(SEL["photos_btn"]).first
             if await btn.count():
@@ -54,4 +63,4 @@ async def collect(ctx, gbp_url: str, max_photos: int = 12) -> list[str]:
         pass
     finally:
         await page.close()
-    return urls
+    return urls, website
