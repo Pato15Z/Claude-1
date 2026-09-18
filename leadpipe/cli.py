@@ -501,7 +501,7 @@ def doctor():
     """Checa a máquina: Python, Playwright, Chromium, banco, internet, Vercel, domínio."""
     import shutil, sys as _sys
     ok = lambda b: "[green]ok[/green]" if b else "[red]FALTA[/red]"
-    con_.print(f"python {_sys.version.split()[0]}  {ok(_sys.version_info >= (3, 11))}")
+    con_.print(f"python {_sys.version.split()[0]}  {ok(_sys.version_info >= (3, 10))}")
     try:
         from playwright.sync_api import sync_playwright
         with sync_playwright() as pw:
@@ -524,8 +524,9 @@ def doctor():
         except Exception:
             good = False
         con_.print(f"internet → {label}  {ok(good)}")
-    con_.print(f"vercel cli  {ok(bool(shutil.which('vercel')))}  (só para lp hero deploy)")
-    con_.print(f"domínio dos heros: {config.HERO_DOMAIN}  {ok(not config.HERO_DOMAIN.startswith('SEUDOMINIO'))}  (LEADPIPE_HERO_DOMAIN)")
+    con_.print(f"vercel cli  {'[green]ok[/green]' if shutil.which('vercel') else '[dim]ausente[/dim]'}  (opcional, só para publicar depois do fechamento)")
+    dom = "[dim]não definido (opcional; heros ficam locais em data/hero_site)[/dim]" if config.HERO_DOMAIN.startswith("SEUDOMINIO") else f"[green]{config.HERO_DOMAIN}[/green]"
+    con_.print(f"domínio dos heros: {dom}")
 
 
 if __name__ == "__main__":
