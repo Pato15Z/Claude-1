@@ -66,7 +66,7 @@ em quem não tem site):
 lp.exe pipeline --vertical "roof cleaning" --state OH --city Newark --city Zanesville
 ```
 
-Atualizar o código sem perder o banco (Windows): baixe o ZIP do branch no navegador (repo privado) e rode `.\update.ps1`; ele pega o ZIP mais novo de Downloads.
+Atualizar o código sem perder o banco (Windows): `.\update.ps1 -Online`.
 
 ## Fluxo diário (90 min)
 
