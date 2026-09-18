@@ -14,3 +14,4 @@ data/debug/
 data/report.html
 data/*.csv
 data/*.json
+tests/fixtures/sites/img/

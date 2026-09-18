@@ -175,6 +175,22 @@ def reply_time_distribution(con: sqlite3.Connection) -> Table:
     return (["tempo até resposta", "respostas", "%"], out)
 
 
+def enrichment_quality(con: sqlite3.Connection) -> Table:
+    """% de leads qualificados que chegaram com ≥3 imagens boas e com email."""
+    rows = con.execute("""
+        SELECT vertical, state,
+               COUNT(*) AS enriquecidos,
+               SUM(email IS NOT NULL) AS com_email,
+               SUM((SELECT COUNT(*) FROM lead_images i WHERE i.lead_id=l.id AND i.kind<>'logo') >= 3) AS com_3_img,
+               SUM((SELECT COUNT(*) FROM lead_images i WHERE i.lead_id=l.id AND i.kind<>'logo') = 0) AS sem_img,
+               SUM(facebook_url IS NOT NULL) AS com_fb,
+               SUM(logo_path IS NOT NULL) AS com_logo
+        FROM leads l WHERE enriched_at IS NOT NULL GROUP BY vertical, state""").fetchall()
+    return (["vertical", "uf", "enriquecidos", "≥3 imagens", "sem imagem", "email", "facebook", "logo"],
+            [[r["vertical"], r["state"], r["enriquecidos"], _pct(r["com_3_img"], r["enriquecidos"]), _pct(r["sem_img"], r["enriquecidos"]),
+              _pct(r["com_email"], r["enriquecidos"]), _pct(r["com_fb"], r["enriquecidos"]), _pct(r["com_logo"], r["enriquecidos"])] for r in rows])
+
+
 def status_counts(con: sqlite3.Connection) -> Table:
     rows = con.execute("SELECT status, COUNT(*) FROM leads GROUP BY status").fetchall()
     order = {s: i for i, s in enumerate(["NOVO", "QUALIFICADO", "ENRIQUECIDO", "HERO_PRONTO", "ENVIADO", "RESPONDEU", "CALL_AGENDADA", "FECHADO", "PERDIDO", "DESCARTADO"])}
@@ -186,6 +202,7 @@ ALL_REPORTS = [
     ("Conversão por lead", funnel),
     ("Qualificação por região", qualification_by_region),
     ("Leads por dia", qualified_per_day),
+    ("Qualidade do enriquecimento", enrichment_quality),
     ("Minutos por lead por módulo (máquina)", minutes_per_lead_by_module),
     ("Tempo entre etapas", stage_durations),
     ("Resposta por canal", response_by_channel),

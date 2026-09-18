@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{ name }} — {{ vertical_title }} in {{ city }}</title>
+<style>
+:root{--p:{{ palette.primary }};--a:{{ palette.accent }};--tp:{{ palette.text_on_primary }};--ta:{{ palette.text_on_accent }};--ink:#0f172a;--mute:#475569;--bg:#ffffff}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.35}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;position:sticky;top:0;z-index:2;box-shadow:0 1px 0 rgba(0,0,0,.06)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;flex:1;margin-right:10px}
+.brand>div{min-width:0}
+.brand img{height:36px;width:auto;max-width:140px;object-fit:contain}
+.brand .n{font-weight:800;font-size:16px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand .c{font-size:12px;color:var(--mute)}
+.call-sm{flex:none;background:var(--p);color:var(--tp);text-decoration:none;font-weight:700;font-size:14px;padding:11px 14px;border-radius:999px;min-height:44px;display:inline-flex;align-items:center;gap:6px}
+.hero{position:relative;min-height:70vh;display:flex;align-items:flex-end;color:#fff;background:var(--p)}
+.hero .img{position:absolute;inset:0;background:#000}
+.hero .img img{width:100%;height:100%;object-fit:cover;display:block}
+.hero .img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.25) 45%,rgba(0,0,0,.78) 100%)}
+.hero .img.gen{background:linear-gradient(160deg,var(--p) 0%,color-mix(in srgb,var(--p) 55%,#000) 100%)}
+.hero .img.gen::after{background:radial-gradient(1200px 500px at 20% 0%,rgba(255,255,255,.14),transparent 60%)}
+.hero .body{position:relative;padding:28px 18px 22px;width:100%}
+.badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.14);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:6px 10px;font-size:13px;font-weight:600;margin-bottom:12px}
+.badge .star{color:#fbbf24}
+h1{font-size:clamp(28px,7.5vw,40px);font-weight:800;line-height:1.08;letter-spacing:-.02em;margin-bottom:10px}
+.sub{font-size:16px;opacity:.92;margin-bottom:18px;max-width:34ch}
+.cta{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--a);color:var(--ta);text-decoration:none;font-weight:800;font-size:18px;min-height:56px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.cta small{font-weight:600;font-size:14px;opacity:.85}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 16px 0}
+.ba figure{position:relative;aspect-ratio:4/5;overflow:hidden;border-radius:12px;background:#e2e8f0}
+.ba img{width:100%;height:100%;object-fit:cover;display:block}
+.ba figcaption{position:absolute;left:8px;top:8px;background:rgba(15,23,42,.8);color:#fff;font-size:12px;font-weight:700;padding:4px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.04em}
+.services{padding:22px 16px 8px}
+.services h2{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--mute);margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:9px 13px;font-size:14px;font-weight:600;min-height:40px;display:inline-flex;align-items:center}
+.trust{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:14px 16px 22px}
+.trust div{background:#f8fafc;border-radius:12px;padding:12px 8px;text-align:center;font-size:13px;font-weight:600;color:var(--ink)}
+.trust b{display:block;font-size:20px;color:var(--p);font-weight:800}
+.gallery{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 16px 20px}
+.gallery img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:3;transform:translateY(110%);transition:transform .25s;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-top:1px solid #e2e8f0}
+.bottom.on{transform:none}
+body.pad{padding-bottom:90px}
+footer{padding:16px;text-align:center;font-size:12px;color:var(--mute)}
+@media(min-width:768px){.hero{min-height:560px}.hero .body{max-width:720px;margin:0 auto;padding:40px 24px}.ba,.services,.trust,.gallery,.bottom{max-width:720px;margin-left:auto;margin-right:auto}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    {% if logo %}<img src="{{ logo }}" alt="{{ name }} logo">{% endif %}
+    <div><div class="n">{{ name }}</div><div class="c">{{ city }}{% if state %}, {{ state }}{% endif %}</div></div>
+  </div>
+  <a class="call-sm" href="tel:{{ phone_e164 }}">📞 Call</a>
+</header>
+
+<section class="hero">
+  {% if hero_image %}<div class="img"><img src="{{ hero_image }}" alt="{{ name }} — {{ vertical_title }} in {{ city }}"></div>
+  {% else %}<div class="img gen"></div>{% endif %}
+  <div class="body">
+    {% if rating %}<div class="badge"><span class="star">★</span> {{ "%.1f"|format(rating) }}{% if review_count %} · {{ review_count }} Google reviews{% endif %}</div>{% endif %}
+    <h1>{{ tagline }}</h1>
+    <p class="sub">{{ sub }}</p>
+    <a class="cta" href="tel:{{ phone_e164 }}">Call Now <small>{{ phone_display }}</small></a>
+  </div>
+</section>
+
+{% if before and after %}
+<section class="ba">
+  <figure><img src="{{ before }}" alt="Before"><figcaption>Before</figcaption></figure>
+  <figure><img src="{{ after }}" alt="After"><figcaption>After</figcaption></figure>
+</section>
+{% endif %}
+
+<section class="services">
+  <h2>Services</h2>
+  <div class="chips">{% for s in services %}<span class="chip">{{ s }}</span>{% endfor %}</div>
+</section>
+
+<section class="trust">
+  <div><b>{{ "%.1f"|format(rating) if rating else "★" }}</b>{{ "Google rating" if rating else "Local & trusted" }}</div>
+  <div><b>{{ review_count if review_count else "✓" }}</b>{{ "reviews" if review_count else "Insured" }}</div>
+  <div><b>Free</b>estimates</div>
+</section>
+
+{% if gallery %}
+<section class="gallery">{% for g in gallery %}<img src="{{ g }}" alt="{{ name }} work photo">{% endfor %}</section>
+{% endif %}
+
+<div class="bottom" id="bottom"><a class="cta" href="tel:{{ phone_e164 }}">{{ cta }} · {{ phone_display }}</a></div>
+<script>
+// Barra fixa só aparece depois que o "Call Now" do topo sai da tela.
+(function(){var c=document.querySelector('.hero .cta'),b=document.getElementById('bottom');if(!c||!b||!('IntersectionObserver' in window))return;
+new IntersectionObserver(function(e){var on=!e[0].isIntersecting;b.classList.toggle('on',on);document.body.classList.toggle('pad',on);}).observe(c);})();
+</script>
+<footer>© {{ year }} {{ name }} · {{ city }}{% if state %}, {{ state }}{% endif %}</footer>
+</body>
+</html>

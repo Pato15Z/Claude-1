@@ -178,7 +178,24 @@ def connect(path: Path | None = None) -> sqlite3.Connection:
     con.execute("PRAGMA foreign_keys=ON")
     con.execute("PRAGMA busy_timeout=30000")
     con.executescript(SCHEMA)
+    _migrate(con)
     return con
+
+
+# Colunas adicionadas depois da v0.1. ALTER TABLE só se faltar.
+_NEW_COLUMNS = {
+    "leads": [("slug", "TEXT"), ("palette_json", "TEXT"), ("logo_path", "TEXT"), ("enriched_at", "TEXT"),
+              ("enrich_notes", "TEXT"), ("hero_built_at", "TEXT"), ("hero_path", "TEXT")],
+}
+
+
+def _migrate(con: sqlite3.Connection) -> None:
+    for table, cols in _NEW_COLUMNS.items():
+        have = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
+        for name, typ in cols:
+            if name not in have:
+                con.execute(f"ALTER TABLE {table} ADD COLUMN {name} {typ}")
+    con.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_leads_slug ON leads(slug) WHERE slug IS NOT NULL")
 
 
 @contextmanager
@@ -303,4 +320,5 @@ LEAD_COLUMNS = {
     "email", "email_source", "email_confidence", "timezone", "source", "source_query",
     "sourced_at", "status", "site_status", "site_reason", "site_checked_at", "screenshot_path",
     "priority", "hero_url", "hero_expires_at", "notes", "created_at", "updated_at",
+    "slug", "palette_json", "logo_path", "enriched_at", "enrich_notes", "hero_built_at", "hero_path",
 }

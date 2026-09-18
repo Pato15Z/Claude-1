@@ -67,6 +67,19 @@ AGGREGATOR_DOMAINS = {
     "craigslist.org", "square.site", "godaddysites.com", "sites.google.com",
 }
 
+# ---------------------------------------------------------- enriquecimento
+IMAGES_DIR = DATA_DIR / "images"
+ENRICH_CONCURRENCY = 4
+ENRICH_MAX_IMAGES = 6
+# Busca web (DuckDuckGo) para achar Facebook/Instagram quando o site não tem o link.
+ENRICH_WEB_SEARCH = os.environ.get("LEADPIPE_WEB_SEARCH", "1") != "0"
+
+# ------------------------------------------------------------------- hero
+# Domínio onde os heros são publicados: {slug}.HERO_DOMAIN
+HERO_DOMAIN = os.environ.get("LEADPIPE_HERO_DOMAIN", "SEUDOMINIO.com")
+HERO_SITE_DIR = DATA_DIR / "hero_site"
+HERO_TTL_DAYS = 30
+
 # ------------------------------------------------------------- sequência
 # Dia relativo ao toque 1 em que cada toque vence, e canal de cada um.
 TOUCH_SCHEDULE = {
@@ -85,5 +98,5 @@ REGION_VIRGIN_ABOVE = 0.40
 
 
 def ensure_dirs() -> None:
-    for d in (DATA_DIR, SCREENSHOT_DIR, DEBUG_DIR):
+    for d in (DATA_DIR, SCREENSHOT_DIR, DEBUG_DIR, IMAGES_DIR, HERO_SITE_DIR):
         d.mkdir(parents=True, exist_ok=True)

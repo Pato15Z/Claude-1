@@ -28,8 +28,10 @@ touch_app = typer.Typer(no_args_is_help=True, help="Sequência de contato: regis
 client_app = typer.Typer(no_args_is_help=True, help="Clientes fechados (churn)")
 report_app = typer.Typer(no_args_is_help=True, help="Módulo 5: relatórios")
 db_app = typer.Typer(no_args_is_help=True, help="Banco")
-for name, sub in [("source", source_app), ("qualify", qualify_app), ("lead", lead_app), ("touch", touch_app),
-                  ("client", client_app), ("report", report_app), ("db", db_app)]:
+enrich_app = typer.Typer(no_args_is_help=True, help="Módulo 3: enriquecimento (email, redes, imagens, paleta)")
+hero_app = typer.Typer(no_args_is_help=True, help="Módulo 4: gerar e publicar heros")
+for name, sub in [("source", source_app), ("qualify", qualify_app), ("enrich", enrich_app), ("hero", hero_app),
+                  ("lead", lead_app), ("touch", touch_app), ("client", client_app), ("report", report_app), ("db", db_app)]:
     app.add_typer(sub, name=name)
 
 con_ = Console()
@@ -299,6 +301,7 @@ _report_cmd("touches", reports.response_by_touch, "Resposta por toque")
 _report_cmd("reply-time", reports.reply_time_distribution, "Tempo até resposta")
 _report_cmd("churn", reports.churn_monthly, "Churn mensal")
 _report_cmd("queries", reports.leads_per_query, "Rendimento por query")
+_report_cmd("enrich", reports.enrichment_quality, "Qualidade do enriquecimento")
 
 
 @report_app.command("region")
@@ -353,6 +356,176 @@ def db_sql(query: str):
     rows = cur.fetchall()
     cols = [d[0] for d in cur.description] if cur.description else []
     _print_table("sql", cols, [list(r) for r in rows], max_rows=200)
+
+
+# ============================================================== enrich
+
+@enrich_app.command("run")
+def enrich_run(
+    limit: Optional[int] = typer.Option(None, help="máximo de leads"),
+    redo: bool = typer.Option(False, help="refaz também leads já ENRIQUECIDO"),
+    no_search: bool = typer.Option(False, help="não busca Facebook/Instagram na web"),
+    no_gbp: bool = typer.Option(False, help="não abre o Google Maps para fotos"),
+):
+    """Para leads QUALIFICADO: email, Facebook/Instagram, 3–6 imagens, logo, paleta → ENRIQUECIDO."""
+    from .enrich.runner import run
+
+    con = _con()
+
+    def progress(lead, r):
+        if "error" in r:
+            con_.print(f"  #{lead['id']:<5} [red]erro[/red] {lead['name'][:40]} {r['error']}")
+        else:
+            con_.print(f"  #{lead['id']:<5} img={r['images']} email={'✓' if r['email'] else '·'} fb={'✓' if r['fb'] else '·'} logo={'✓' if r['logo'] else '·'}  {lead['name'][:40]}")
+
+    agg = asyncio.run(run(con, limit=limit, redo=redo, web_search=not no_search, gbp=not no_gbp, progress=progress))
+    if not agg:
+        con_.print("nada a enriquecer (nenhum lead QUALIFICADO)"); return
+    n = agg["leads"] or 1
+    con_.print(f"[bold]{agg['leads']} leads em {agg['_elapsed_s']}s ({agg['_elapsed_s'] / n:.1f}s/lead) — "
+               f"≥3 imagens {100 * agg['with_3_images'] / n:.0f}% · email {100 * agg['with_email'] / n:.0f}% · fb {100 * agg['with_fb'] / n:.0f}% · erros {agg['errors']}[/bold]")
+
+
+@enrich_app.command("show")
+def enrich_show(lead_id: int):
+    con = _con()
+    lead = db.get_lead(con, lead_id)
+    if not lead:
+        con_.print("[red]não existe[/red]"); raise typer.Exit(1)
+    for k in ("email", "email_source", "email_confidence", "facebook_url", "instagram_url", "logo_path", "palette_json", "priority", "enrich_notes"):
+        con_.print(f"[bold]{k:<16}[/bold] {lead[k]}")
+    rows = con.execute("SELECT * FROM lead_images WHERE lead_id=? ORDER BY score DESC", (lead_id,)).fetchall()
+    _print_table("imagens", ["kind", "WxH", "source", "score", "path"], [[r["kind"], f"{r['width']}x{r['height']}", r["source"], r["score"], r["path"]] for r in rows])
+
+
+# ============================================================== hero
+
+@hero_app.command("build")
+def hero_build(
+    limit: Optional[int] = typer.Option(None),
+    include_low: bool = typer.Option(False, help="inclui leads sem imagem (hero com fundo genérico)"),
+    rebuild: bool = typer.Option(False, help="regenera também os já HERO_PRONTO"),
+):
+    """Gera os heros em batch em data/hero_site/{slug}/ e marca HERO_PRONTO."""
+    from .hero.build import build
+
+    con = _con()
+    if config.HERO_DOMAIN.startswith("SEUDOMINIO"):
+        con_.print("[yellow]LEADPIPE_HERO_DOMAIN não definido: as URLs vão sair como {slug}.SEUDOMINIO.com. Defina a variável e rode --rebuild depois.[/yellow]")
+
+    def progress(lead, url, has_img):
+        con_.print(f"  #{lead['id']:<5} {'🖼' if has_img else '▫'} {url}")
+
+    r = build(con, limit=limit, include_low_priority=include_low, rebuild=rebuild, progress=progress)
+    if not r:
+        con_.print("nada a gerar (nenhum lead ENRIQUECIDO com prioridade normal; use --include-low)"); return
+    con_.print(f"[bold]{r['built']} heros em {r['_elapsed_s']}s → {r['site_dir']}  (erros: {r['errors']})[/bold]")
+    con_.print("publicar: lp hero deploy   (ou abrir localmente: lp hero serve)")
+
+
+@hero_app.command("serve")
+def hero_serve(port: int = 8080):
+    """Serve data/hero_site localmente para gravar o vídeo antes do deploy: http://localhost:8080/<slug>/"""
+    import http.server, functools
+    config.ensure_dirs()
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(config.HERO_SITE_DIR))
+    con_.print(f"http://localhost:{port}/<slug>/   (Ctrl+C para parar)")
+    http.server.ThreadingHTTPServer(("127.0.0.1", port), handler).serve_forever()
+
+
+@hero_app.command("deploy")
+def hero_deploy():
+    """Publica data/hero_site na Vercel (precisa de `npm i -g vercel` e `vercel login` uma vez)."""
+    import shutil, subprocess
+    if not shutil.which("vercel"):
+        con_.print("[red]CLI da Vercel não encontrada.[/red] Instale: npm i -g vercel && vercel login. Depois: lp hero deploy")
+        raise typer.Exit(1)
+    r = subprocess.run(["vercel", "deploy", "--prod", "--yes"], cwd=str(config.HERO_SITE_DIR))
+    raise typer.Exit(r.returncode)
+
+
+@hero_app.command("expire")
+def hero_expire(dry_run: bool = typer.Option(False, help="só lista")):
+    """Derruba heros com mais de 30 dias sem resposta."""
+    from .hero.build import expire
+    con = _con()
+    rows = expire(con, dry_run)
+    _print_table("heros expirados" + (" (simulação)" if dry_run else ""), ["id", "nome", "url", "status"], [[r["id"], r["name"], r["url"], r["status"]] for r in rows])
+    if rows and not dry_run:
+        con_.print("rode `lp hero deploy` para refletir a remoção")
+
+
+@hero_app.command("list")
+def hero_list():
+    con = _con()
+    rows = con.execute("SELECT id, name, city, status, hero_url, hero_expires_at, priority FROM leads WHERE hero_url IS NOT NULL ORDER BY hero_built_at DESC").fetchall()
+    _print_table("heros", ["id", "nome", "cidade", "status", "url", "expira", "prio"], [list(r) for r in rows])
+
+
+# ============================================================== touch draft
+
+@touch_app.command("draft")
+def touch_draft(lead_id: Optional[int] = typer.Argument(None), n: Optional[int] = typer.Option(None, "--n"),
+                today: bool = typer.Option(False, help="rascunhos de toda a fila de hoje"),
+                sender_name: Optional[str] = None, sender_phone: Optional[str] = None, video_url: Optional[str] = None):
+    """Imprime o texto pronto do próximo toque (ou --n) para copiar e colar."""
+    from .tracking.templates import render
+    con = _con()
+    sender = {k: v for k, v in {"sender_name": sender_name, "sender_phone": sender_phone, "video_url": video_url}.items() if v}
+    targets = []
+    if today:
+        for i in daily_queue(con):
+            targets.append((i.lead_id, i.touch_number))
+    elif lead_id is not None:
+        if n is None:
+            row = con.execute("SELECT COALESCE(MAX(touch_number),0)+1 FROM touches WHERE lead_id=?", (lead_id,)).fetchone()
+            n = min(int(row[0]), 4)
+        targets.append((lead_id, n))
+    else:
+        con_.print("informe um lead_id ou --today"); raise typer.Exit(1)
+    for lid, tn in targets:
+        lead = db.get_lead(con, lid)
+        t1 = con.execute("SELECT sent_at FROM touches WHERE lead_id=? AND touch_number=1", (lid,)).fetchone()
+        d = render(tn, lead, (t1["sent_at"][:10] if t1 else None), sender)
+        con_.rule(f"#{lid} {lead['name']} — toque {tn} ({d['channel']})")
+        if d["subject"]:
+            con_.print(f"[bold]Subject:[/bold] {d['subject']}")
+        con_.print(d["body"])
+        con_.print(f"[dim]registrar: lp touch log {lid} --n {tn} --channel {d['channel']}[/dim]")
+
+
+# ============================================================== doctor
+
+@app.command("doctor")
+def doctor():
+    """Checa a máquina: Python, Playwright, Chromium, banco, internet, Vercel, domínio."""
+    import shutil, sys as _sys
+    ok = lambda b: "[green]ok[/green]" if b else "[red]FALTA[/red]"
+    con_.print(f"python {_sys.version.split()[0]}  {ok(_sys.version_info >= (3, 11))}")
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as pw:
+            kw = {"headless": True}
+            if config.CHROMIUM_PATH:
+                kw["executable_path"] = config.CHROMIUM_PATH
+            b = pw.chromium.launch(**kw); v = b.version; b.close()
+        con_.print(f"chromium {v}  {ok(True)}")
+    except Exception as e:
+        con_.print(f"chromium  {ok(False)}  → rode: playwright install chromium   ({str(e)[:80]})")
+    try:
+        c = _con(); n = c.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
+        con_.print(f"banco {config.DB_PATH} ({n} leads)  {ok(True)}")
+    except Exception as e:
+        con_.print(f"banco  {ok(False)} {e}")
+    import httpx
+    for label, url in [("google maps", "https://www.google.com/maps"), ("duckduckgo", "https://html.duckduckgo.com/html/?q=x")]:
+        try:
+            r = httpx.get(url, timeout=8, follow_redirects=True, headers={"User-Agent": config.MOBILE_UA}); good = r.status_code < 400
+        except Exception:
+            good = False
+        con_.print(f"internet → {label}  {ok(good)}")
+    con_.print(f"vercel cli  {ok(bool(shutil.which('vercel')))}  (só para lp hero deploy)")
+    con_.print(f"domínio dos heros: {config.HERO_DOMAIN}  {ok(not config.HERO_DOMAIN.startswith('SEUDOMINIO'))}  (LEADPIPE_HERO_DOMAIN)")
 
 
 if __name__ == "__main__":
