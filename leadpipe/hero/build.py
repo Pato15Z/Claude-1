@@ -56,7 +56,8 @@ def hero_data(con: sqlite3.Connection, lead: sqlite3.Row, site_dir: Path) -> dic
         shutil.rmtree(out)
     img_out.mkdir(parents=True)
     imgs = con.execute("SELECT * FROM lead_images WHERE lead_id=? ORDER BY score DESC, id", (lead["id"],)).fetchall()
-    work = [i for i in imgs if i["kind"] != "logo" and Path(i["path"]).exists()]
+    # só fotos horizontais (largura > altura): a faixa lateral é uniforme e sem corte
+    work = [i for i in imgs if i["kind"] != "logo" and Path(i["path"]).exists() and (i["width"] or 0) > (i["height"] or 0)]
     logo = next((i for i in imgs if i["kind"] == "logo" and Path(i["path"]).exists()), None)
 
     def copy(row, name):
@@ -79,11 +80,15 @@ def hero_data(con: sqlite3.Connection, lead: sqlite3.Row, site_dir: Path) -> dic
     for r in revs:
         r["text"] = (r["text"][:257] + "…") if len(r["text"]) > 260 else r["text"]
         r["initial"] = (r["author"] or "G")[0].upper()
-    # mapa: embed do Google sem chave de API; centra na coordenada ou no endereço
-    if lead["lat"] is not None and lead["lng"] is not None:
+    # mapa: embed do Google sem chave de API. Empresa SEM endereço físico (atende
+    # uma região) recebe do Google uma coordenada no centro da área declarada,
+    # às vezes o estado inteiro. Nesse caso usa o lugar da busca (cidade/condado).
+    place = ", ".join(x for x in (lead["city"] or "", lead["state"] or "") if x) or None
+    has_street = bool(lead["street"]) or bool(lead["address_full"] and any(ch.isdigit() for ch in (lead["address_full"] or "")[:8]))
+    if has_street and lead["lat"] is not None and lead["lng"] is not None:
         map_q = f"{lead['lat']},{lead['lng']}"
     else:
-        map_q = ", ".join(x for x in (lead["address_full"] or "", lead["city"] or "", lead["state"] or "") if x) or None
+        map_q = place
     map_embed = f"https://www.google.com/maps?q={quote_plus(map_q, safe=',')}&z=11&output=embed" if map_q else None
     data = {
         "slug": slug,
