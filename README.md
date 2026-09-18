@@ -21,7 +21,7 @@ playwright install chromium
 lp db init && lp doctor
 ```
 
-Requer Python 3.11+. Banco em `data/leadpipe.db`; screenshots, imagens e heros
+Requer Python 3.10+. **No Windows use `leadpipe` (ou `lp.exe`) em vez de `lp`**: o PowerShell tem um alias `lp` embutido que manda para a impressora. Banco em `data/leadpipe.db`; screenshots, imagens e heros
 em `data/`. Tudo em `data/` está no `.gitignore`.
 
 ## Fluxo semanal (sourcing, ~1h de máquina para ~1.000 leads)
