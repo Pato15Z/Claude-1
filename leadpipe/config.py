@@ -1,0 +1,89 @@
+"""Configuração central. Tudo que é "número mágico" fica aqui, com comentário,
+para poder ser auditado e ajustado sem caçar no código.
+
+Sobrescrever via variáveis de ambiente LEADPIPE_*.
+"""
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+ROOT = Path(os.environ.get("LEADPIPE_ROOT", Path(__file__).resolve().parent.parent))
+DATA_DIR = Path(os.environ.get("LEADPIPE_DATA", ROOT / "data"))
+DB_PATH = Path(os.environ.get("LEADPIPE_DB", DATA_DIR / "leadpipe.db"))
+SCREENSHOT_DIR = DATA_DIR / "screenshots"
+DEBUG_DIR = DATA_DIR / "debug"
+
+# Caminho explícito do Chromium. Vazio = deixa o Playwright achar o dele
+# (instalado com `playwright install chromium`).
+CHROMIUM_PATH = os.environ.get("LEADPIPE_CHROMIUM_PATH") or None
+
+# ---------------------------------------------------------------- sourcing
+# Pausa entre listagens no Google Maps (segundos, faixa aleatória). Muito
+# rápido = captcha; muito lento = batch de 1000 vira 3 horas.
+MAPS_DELAY_RANGE = (0.8, 2.2)
+# Quantas vezes rolar o feed de resultados antes de desistir (cada rolagem
+# carrega ~20 resultados; Maps satura em ~120 por query de qualquer forma).
+MAPS_MAX_SCROLLS = 12
+MAPS_RETRIES = 3
+MAPS_NAV_TIMEOUT_MS = 25_000
+
+# ------------------------------------------------------------ qualificação
+# Site que demora mais que isso é SITE_QUEBRADO por definição do critério.
+SITE_TIMEOUT_S = 8.0
+# Viewport mobile usado para render e screenshot.
+MOBILE_VIEWPORT = {"width": 390, "height": 844}
+MOBILE_UA = (
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+)
+# Quantos sites verificar em paralelo. Cada um abre uma aba de browser.
+QUALIFY_CONCURRENCY = 6
+# Overflow horizontal: scrollWidth > viewport + esta folga (px).
+OVERFLOW_TOLERANCE_PX = 8
+# Fração dos caracteres visíveis com fonte < 12px acima da qual o render é
+# considerado quebrado. 100% dos sites têm algum texto miúdo (rodapé), por
+# isso não é "qualquer texto".
+SMALL_TEXT_MIN_PX = 12
+SMALL_TEXT_RATIO_BROKEN = 0.30
+# Alvo de toque mínimo (px) para botões/CTAs. Quebrado se NENHUM CTA visível
+# atinge o mínimo (todos pequenos), não se algum é pequeno.
+TAP_TARGET_MIN_PX = 40
+# Sinais de SITE_ANTIGO necessários para classificar como antigo.
+OLD_SITE_MIN_SIGNALS = 2
+# Ano de copyright abaixo do qual conta como sinal.
+OLD_COPYRIGHT_BEFORE = 2020
+
+# Domínios que contam como "sem site": rede social, agregador, page builder
+# gratuito que o Google lista como website.
+AGGREGATOR_DOMAINS = {
+    "facebook.com", "fb.com", "fb.me", "m.me", "instagram.com", "yelp.com",
+    "nextdoor.com", "angi.com", "angieslist.com", "thumbtack.com",
+    "homeadvisor.com", "houzz.com", "bark.com", "porch.com", "yellowpages.com",
+    "bbb.org", "mapquest.com", "alignable.com", "linktr.ee", "business.site",
+    "google.com", "goo.gl", "g.page", "wa.me", "tiktok.com", "twitter.com",
+    "x.com", "youtube.com", "linkedin.com", "nicelocal.com", "manta.com",
+    "superpages.com", "citysearch.com", "merchantcircle.com", "networx.com",
+    "craigslist.org", "square.site", "godaddysites.com", "sites.google.com",
+}
+
+# ------------------------------------------------------------- sequência
+# Dia relativo ao toque 1 em que cada toque vence, e canal de cada um.
+TOUCH_SCHEDULE = {
+    1: {"day": 0, "channel": "email"},
+    2: {"day": 3, "channel": "facebook_page"},
+    3: {"day": 5, "channel": "ligacao"},
+    4: {"day": 8, "channel": "email"},
+}
+SEND_LOCAL_HOUR = 6  # toque 1 e 4 vão às 6h no fuso do lead
+
+# ------------------------------------------------------------- decisão
+# Regra de leitura da região: abaixo de 25% de qualificação = saturada,
+# acima de 40% = virgem.
+REGION_SATURATED_BELOW = 0.25
+REGION_VIRGIN_ABOVE = 0.40
+
+
+def ensure_dirs() -> None:
+    for d in (DATA_DIR, SCREENSHOT_DIR, DEBUG_DIR):
+        d.mkdir(parents=True, exist_ok=True)
