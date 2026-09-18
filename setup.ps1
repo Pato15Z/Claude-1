@@ -1,9 +1,10 @@
-# Instalação em um comando (Windows, PowerShell). Se der erro de política: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+# Instalação em um comando (Windows, PowerShell).
+# Se der erro de política: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force
 Set-Location $PSScriptRoot
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -q --upgrade pip
-pip install -q -e ".[dev]"
+if (-not (Test-Path ".venv")) { python -m venv .venv }
+$py = ".\.venv\Scripts\python.exe"
+& $py -m pip install -q -e ".[dev]"
+& .\.venv\Scripts\Activate.ps1
 playwright install chromium
 lp db init
 lp doctor

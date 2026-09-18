@@ -4,8 +4,7 @@ set -e
 cd "$(dirname "$0")"
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -q --upgrade pip
-pip install -q -e ".[dev]"
+python -m pip install -q -e ".[dev]"
 playwright install chromium
 lp db init
 lp doctor
