@@ -478,6 +478,36 @@ def hero_expire(dry_run: bool = typer.Option(False, help="só lista")):
         con_.print("rode `lp hero deploy` para refletir a remoção")
 
 
+@hero_app.command("shot")
+def hero_shot(lead_id: Optional[int] = typer.Argument(None, help="vazio = todos os HERO_PRONTO")):
+    """Tira uma foto do hero em tamanho de celular (390px, página inteira) → data/hero_site/<slug>/preview.png"""
+    from .qualify.render_check import new_browser
+    from playwright.async_api import async_playwright
+
+    con = _con()
+    q = "SELECT id, slug, hero_path FROM leads WHERE hero_path IS NOT NULL" + (" AND id=?" if lead_id else "")
+    rows = con.execute(q, (lead_id,) if lead_id else ()).fetchall()
+    if not rows:
+        con_.print("nenhum hero gerado (rode lp hero build)"); raise typer.Exit(1)
+
+    async def go():
+        async with async_playwright() as pw:
+            b = await new_browser(pw)
+            ctx = await b.new_context(viewport=config.MOBILE_VIEWPORT, device_scale_factor=2, is_mobile=True, user_agent=config.MOBILE_UA)
+            try:
+                for r in rows:
+                    pg = await ctx.new_page()
+                    await pg.goto(Path(r["hero_path"], "index.html").resolve().as_uri())
+                    await pg.wait_for_timeout(400)
+                    out = Path(r["hero_path"]) / "preview.png"
+                    await pg.screenshot(path=str(out), full_page=True)
+                    await pg.close()
+                    con_.print(f"  #{r['id']} {out}")
+            finally:
+                await b.close()
+    asyncio.run(go())
+
+
 @hero_app.command("list")
 def hero_list():
     con = _con()
