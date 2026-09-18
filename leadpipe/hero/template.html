@@ -72,6 +72,7 @@ section h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:va
 .bottom.on{transform:none}
 body.pad{padding-bottom:90px}
 .final{padding:10px 0 26px}
+.final .area{margin-top:10px;text-align:center;font-size:13px;color:var(--mute)}
 .final .cta{background:var(--p);color:var(--tp)}
 footer{padding:18px 16px 24px;text-align:center;font-size:12px;color:var(--mute);font-weight:500}
 /* desktop: tudo largo, nada deslizando de lado */
@@ -154,10 +155,11 @@ footer{padding:18px 16px 24px;text-align:center;font-size:12px;color:var(--mute)
 
 <section class="final"><div class="wrap">
   <h2 style="text-align:center">Ready when you are</h2>
-  <a class="cta" href="tel:{{ phone_e164 }}" style="margin:0 auto">{{ cta }} <small>{{ phone_display }}</small></a>
+  <a class="cta" href="tel:{{ phone_e164 }}" style="margin:0 auto"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg> Call Now <small>{{ phone_display }}</small></a>
+  <div class="area">{{ cta }} · free, no obligation</div>
 </div></section>
 
-<div class="bottom" id="bottom"><a class="cta" href="tel:{{ phone_e164 }}"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg> {{ cta }}</a></div>
+<div class="bottom" id="bottom"><a class="cta" href="tel:{{ phone_e164 }}" style="font-size:17px"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg> {{ cta }}</a></div>
 <script>
 // Barra fixa só aparece depois que o "Call Now" do topo sai da tela.
 (function(){var c=document.querySelector('.hero .cta'),b=document.getElementById('bottom');if(!c||!b||!('IntersectionObserver' in window))return;
