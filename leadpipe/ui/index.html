@@ -93,7 +93,16 @@ pre{white-space:pre-wrap;background:#0f1115;border:1px solid var(--line);border-
   </section>
 
   <section id="tab-rodar" hidden>
-    <div class="card"><h2>1. Buscar empresas no Google Maps</h2>
+    <div class="card"><h2>0. CAÇAR QUEM NÃO TEM SITE (recomendado)</h2>
+      <div class="form">
+        <input id="h-state" value="OH" style="width:70px" placeholder="UF">
+        <select id="h-by"><option value="county">por condado (zona rural)</option><option value="city">por cidade</option></select>
+        <input id="h-vertical" placeholder="verticais separadas por vírgula (vazio = as 5)" style="min-width:320px">
+        <button class="btn ok" data-run="hunt">Caçar SEM SITE</button>
+      </div>
+      <p class="muted" style="margin-top:6px">Lê só o card do Google: quem tem botão "Website" é descartado na hora, sem clique. Cada lead já entra como SEM SITE / QUALIFICADO. Ohio inteiro por condado = 88 × 5 = 440 buscas ≈ 3–4 h; deixe rodando.</p>
+    </div>
+    <div class="card"><h2>1. Buscar empresas no Google Maps (todos, com e sem site)</h2>
       <div class="form">
         <input id="r-vertical" value="roof cleaning" placeholder="vertical">
         <input id="r-state" value="OH" style="width:70px" placeholder="UF">
@@ -233,7 +242,9 @@ $$('.chip[data-site]').forEach(c => c.onclick = () => { site = c.dataset.site; $
 $('#fstatus').onchange = loadLeads; $('#fq').oninput = () => { clearTimeout(window._t); window._t = setTimeout(loadLeads, 250); };
 $('#dclose').onclick = () => { $('#drawer').classList.remove('on'); window._lead = null; };
 $$('[data-run]').forEach(b => b.onclick = async () => {
-  const body = {op:'run', what:b.dataset.run, vertical:$('#r-vertical').value, state:$('#r-state').value, cities:$('#r-cities').value, max_results:$('#r-max').value};
+  const hunt = b.dataset.run === 'hunt';
+  const body = hunt ? {op:'run', what:'hunt', state:$('#h-state').value, by:$('#h-by').value, vertical:$('#h-vertical').value}
+                    : {op:'run', what:b.dataset.run, vertical:$('#r-vertical').value, state:$('#r-state').value, cities:$('#r-cities').value, max_results:$('#r-max').value};
   const r = await post(body); if(r.error) alert(r.error); loadJobs();
 });
 function refresh(){ ({painel: loadPainel, leads: loadLeads, fila: loadQueue, rodar: loadJobs})[tab](); }

@@ -55,7 +55,8 @@ def _print_table(title: str, cols, rows, max_rows: int | None = None) -> None:
 
 
 def _stats_line(prefix: str, st: IngestStats) -> str:
-    return f"{prefix}: achados={st.found} novos={st.inserted} duplicados={st.duplicates} campos preenchidos={st.filled}"
+    extra = f" [dim]com site pulados={st.with_site}[/dim]" if st.with_site else ""
+    return f"{prefix}: achados={st.found} novos={st.inserted} duplicados={st.duplicates} campos preenchidos={st.filled}{extra}"
 
 
 # ============================================================== source
@@ -80,19 +81,22 @@ def source_maps(
     headful: bool = typer.Option(False, help="mostra o browser (útil para captcha)"),
     force: bool = typer.Option(False, help="repete queries já rodadas nos últimos 7 dias"),
     debug: bool = typer.Option(False, help="salva HTML em data/debug/"),
+    no_site_only: bool = typer.Option(False, help="modo caça: só quem NÃO tem site (10x mais rápido)"),
+    by: str = typer.Option("city", help="city | county (condado cobre zona rural)"),
 ):
-    """Scrape do Google Maps, iterando por cidade. Persiste lead a lead."""
+    """Scrape do Google Maps, iterando por cidade ou condado. Persiste lead a lead."""
     from .sourcing.google_maps import ScrapeOptions, scrape_many
 
     con = _con()
     st = state.upper()
-    cities = list(city) if city else [c["name"] for c in cities_for_state(st, min_pop, max_cities)]
+    from .sourcing.cities import places_for_state
+    cities = list(city) if city else places_for_state(st, by, min_pop, max_cities)
     if not cities:
         con_.print("[red]nenhuma cidade encontrada[/red]")
         raise typer.Exit(1)
     queries = [(f"{vertical} {c} {st}", vertical, c, st) for c in cities]
-    con_.print(f"{len(queries)} queries para '{vertical}' em {st}")
-    run_id = db.start_run(con, "source", json.dumps({"vertical": vertical, "state": st, "cities": len(cities)}))
+    con_.print(f"{len(queries)} queries para '{vertical}' em {st}" + (" [modo caça: só sem site]" if no_site_only else ""))
+    run_id = db.start_run(con, "source", json.dumps({"vertical": vertical, "state": st, "cities": len(cities), "no_site_only": no_site_only}))
 
     def progress(q, stats, skipped=False):
         if skipped:
@@ -100,7 +104,8 @@ def source_maps(
         else:
             con_.print("  " + _stats_line(q, stats))
 
-    total = asyncio.run(scrape_many(con, queries, ScrapeOptions(headless=not headful, fast=fast, max_results=max_results, debug=debug), force=force, progress=progress))
+    total = asyncio.run(scrape_many(con, queries, ScrapeOptions(headless=not headful, fast=fast, max_results=max_results, debug=debug,
+                                                                no_site_only=no_site_only), force=force, progress=progress))
     db.finish_run(con, run_id, processed=total.found, produced=total.inserted)
     con_.print("[bold]" + _stats_line("TOTAL", total) + "[/bold]")
 
@@ -558,6 +563,43 @@ def pipeline(
     cols, rows = reports.qualification_by_region(con, "city")
     _print_table("Qualificação por cidade", cols, rows, max_rows=30)
     con_.print("próximo: [bold]lp ui[/bold] para ver tudo numa tela")
+
+
+@app.command("hunt")
+def hunt(
+    state: str = typer.Option(..., help="sigla, ex: OH"),
+    vertical: list[str] = typer.Option(None, "--vertical", help="repetível; padrão = as 5 verticais"),
+    by: str = typer.Option("county", help="county (zona rural, padrão) | city"),
+    min_pop: int = 10000, max_places: Optional[int] = None,
+    headful: bool = False, force: bool = False,
+):
+    """CAÇA SEM SITE: varre verticais × condados (ou cidades) pegando só quem não tem
+    site. Cada lead já entra como SEM_SITE / QUALIFICADO. Depois: lp enrich run, lp hero build."""
+    from .sourcing.cities import places_for_state
+    from .sourcing.google_maps import ScrapeOptions, scrape_many
+
+    con = _con()
+    st = state.upper()
+    verticals = list(vertical) if vertical else config.HUNT_VERTICALS
+    places = places_for_state(st, by, min_pop, max_places)
+    queries = [(f"{v} {pl} {st}", v, pl, st) for pl in places for v in verticals]
+    con_.print(f"[bold]caça em {st}: {len(places)} {by}s × {len(verticals)} verticais = {len(queries)} buscas[/bold] (~20–40 s cada)")
+    run_id = db.start_run(con, "hunt", json.dumps({"state": st, "by": by, "places": len(places), "verticals": verticals}))
+    before = con.execute("SELECT COUNT(*) FROM leads WHERE site_status='SEM_SITE'").fetchone()[0]
+
+    def progress(q, stats, skipped=False):
+        if skipped:
+            con_.print(f"  [dim]pulado (já rodou):[/dim] {q}")
+        else:
+            con_.print(f"  {q}: [green]sem site novos={stats.inserted}[/green]  dup={stats.duplicates}  com site pulados={stats.with_site}")
+
+    total = asyncio.run(scrape_many(con, queries, ScrapeOptions(headless=not headful, no_site_only=True), force=force, progress=progress))
+    after = con.execute("SELECT COUNT(*) FROM leads WHERE site_status='SEM_SITE'").fetchone()[0]
+    db.finish_run(con, run_id, processed=total.found + total.with_site, produced=total.inserted)
+    con_.print(f"[bold]SEM SITE no banco: {before} → {after} (+{after - before}); com site descartados na hora: {total.with_site}[/bold]")
+    cols, rows = reports.leads_per_query(con)
+    _print_table("rendimento por busca (novos = sem site)", cols, rows, max_rows=25)
+    con_.print("próximo: [bold]lp enrich run --only SEM_SITE[/bold] → [bold]lp hero build --include-low[/bold] → [bold]lp ui[/bold]")
 
 
 # ============================================================== doctor

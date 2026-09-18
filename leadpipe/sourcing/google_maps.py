@@ -70,6 +70,7 @@ class ScrapeOptions:
     skip_known: bool = True     # não clica em card cujo place id já está no banco
     max_results: int | None = None
     debug: bool = False
+    no_site_only: bool = False  # modo caça: descarta no card quem tem site; só clica se faltar telefone
 
 
 def _place_id(href: str) -> str | None:
@@ -300,6 +301,7 @@ async def scrape_query(con: sqlite3.Connection, ctx, query: str, vertical: str, 
         if opts.max_results:
             n = min(n, opts.max_results)
         seen: set[str] = set()
+        from ..qualify.classify import is_aggregator
         for i in range(n):
             link = links.nth(i)
             try:
@@ -309,10 +311,16 @@ async def scrape_query(con: sqlite3.Connection, ctx, query: str, vertical: str, 
             if not card["name"] or card["href"] in seen:
                 continue
             seen.add(card["href"])
+            if opts.no_site_only and card.get("website") and not is_aggregator(card["website"]):
+                stats.with_site += 1
+                continue  # tem site: não é nosso cliente, nem gasta clique
             known = card["place_id"] and con.execute(
                 "SELECT 1 FROM leads WHERE gbp_place_id=?", (card["place_id"],)).fetchone()
             detail: dict = {}
-            if not opts.fast and not (opts.skip_known and known):
+            need_detail = not opts.fast and not (opts.skip_known and known)
+            if opts.no_site_only and card.get("phone"):
+                need_detail = False  # já temos o que importa: nome, telefone, nota, cidade
+            if need_detail:
                 try:
                     detail = await _read_detail(page, link, card["name"])
                 except Blocked:
@@ -339,7 +347,10 @@ async def scrape_query(con: sqlite3.Connection, ctx, query: str, vertical: str, 
                 review_count=merged.get("review_count"),
                 last_review_at=merged.get("last_review_at"),
             )
-            ingest_one(con, raw, stats)
+            lead_id = ingest_one(con, raw, stats)
+            if opts.no_site_only and lead_id:
+                from ..qualify.runner import auto_qualify_no_site
+                auto_qualify_no_site(con, lead_id)
     except Blocked as e:
         error = f"blocked: {e}"
     except Exception as e:
@@ -381,7 +392,7 @@ async def scrape_many(con: sqlite3.Connection, queries: list[tuple[str, str, str
                         progress(q, None, skipped=True)
                     continue
                 st = await scrape_query(con, ctx, q, vertical, city, state, opts)
-                for k in ("found", "inserted", "duplicates", "filled", "skipped"):
+                for k in ("found", "inserted", "duplicates", "filled", "skipped", "with_site"):
                     setattr(total, k, getattr(total, k) + getattr(st, k))
                 if progress:
                     progress(q, st)

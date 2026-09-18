@@ -136,6 +136,8 @@ def _action(con, body: dict) -> dict:
             "source": ["source", "maps", "--vertical", body.get("vertical", "roof cleaning"), "--state", body.get("state", "OH")]
                       + sum([["--city", c.strip()] for c in (body.get("cities") or "").split(",") if c.strip()], [])
                       + (["--max-results", str(int(body["max_results"]))] if body.get("max_results") else []),
+            "hunt": ["hunt", "--state", body.get("state", "OH"), "--by", body.get("by", "county")]
+                    + sum([["--vertical", v.strip()] for v in (body.get("vertical") or "").split(",") if v.strip()], []),
             "pipeline": ["pipeline", "--vertical", body.get("vertical", "roof cleaning"), "--state", body.get("state", "OH")]
                         + sum([["--city", c.strip()] for c in (body.get("cities") or "").split(",") if c.strip()], []),
         }

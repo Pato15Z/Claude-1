@@ -66,3 +66,21 @@ def test_href_parsing():
     href = "https://www.google.com/maps/place/Bob/data=!4m7!3m6!1s0x8838f1a2b3c4d5e6:0x1a2b3c4d5e6f7a8b!8m2!3d39.961176!4d-82.998794!16s"
     assert _place_id(href) == "0x8838f1a2b3c4d5e6:0x1a2b3c4d5e6f7a8b"
     assert _coords(href) == (39.961176, -82.998794)
+
+
+def test_auto_qualify_no_site(con):
+    from leadpipe.qualify.runner import auto_qualify_no_site
+    a = ingest_one(con, _raw(website_url=None), IngestStats())
+    b = ingest_one(con, _raw(phone_raw="614-555-0777", address_full="7 Elm St, Dayton, OH 45402", website_url="https://facebook.com/x"), IngestStats())
+    c = ingest_one(con, _raw(phone_raw="614-555-0888", address_full="8 Elm St, Dayton, OH 45402", website_url="https://real.example"), IngestStats())
+    assert auto_qualify_no_site(con, a) and auto_qualify_no_site(con, b) and not auto_qualify_no_site(con, c)
+    assert db.get_lead(con, a)["status"] == "QUALIFICADO" and db.get_lead(con, a)["site_status"] == "SEM_SITE"
+    assert db.get_lead(con, b)["site_status"] == "SEM_SITE" and db.get_lead(con, c)["status"] == "NOVO"
+    assert not auto_qualify_no_site(con, a)  # já qualificado: não repete
+
+
+def test_places_for_state():
+    from leadpipe.sourcing.cities import places_for_state
+    counties = places_for_state("OH", "county")
+    assert len(counties) == 88 and "Licking County" in counties
+    assert len(places_for_state("OH", "city", 20000)) > 50

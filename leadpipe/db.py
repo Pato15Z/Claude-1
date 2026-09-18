@@ -184,6 +184,7 @@ def connect(path: Path | None = None) -> sqlite3.Connection:
 
 # Colunas adicionadas depois da v0.1. ALTER TABLE só se faltar.
 _NEW_COLUMNS = {
+    "source_queries": [("with_site", "INTEGER")],
     "leads": [("slug", "TEXT"), ("palette_json", "TEXT"), ("logo_path", "TEXT"), ("enriched_at", "TEXT"),
               ("enrich_notes", "TEXT"), ("hero_built_at", "TEXT"), ("hero_path", "TEXT")],
 }

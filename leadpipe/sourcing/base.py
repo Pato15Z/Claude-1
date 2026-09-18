@@ -43,6 +43,7 @@ class IngestStats:
     duplicates: int = 0
     filled: int = 0  # campos preenchidos em duplicatas
     skipped: int = 0  # sem nome
+    with_site: int = 0  # pulados por já terem site (modo caça)
 
 
 def to_row(raw: RawLead) -> dict[str, Any]:
@@ -99,10 +100,10 @@ def ingest_one(con: sqlite3.Connection, raw: RawLead, stats: IngestStats) -> int
 def record_query(con: sqlite3.Connection, query: str, vertical: str, city: str | None,
                  state: str | None, stats: IngestStats, elapsed_s: float, error: str | None = None) -> None:
     con.execute(
-        "INSERT INTO source_queries (query, vertical, city, state, ran_at, found, inserted, duplicates, elapsed_s, error)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO source_queries (query, vertical, city, state, ran_at, found, inserted, duplicates, elapsed_s, error, with_site)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         (query, vertical, city, state, db.now_iso(), stats.found, stats.inserted, stats.duplicates,
-         round(elapsed_s, 1), error),
+         round(elapsed_s, 1), error, stats.with_site),
     )
 
 

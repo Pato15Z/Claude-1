@@ -31,6 +31,19 @@ def _apply(con: sqlite3.Connection, lead_id: int, v: Verdict, url: str | None, h
     db.transition(con, lead_id, target, note=f"{v.site_status}: {v.reason}"[:300])
 
 
+def auto_qualify_no_site(con: sqlite3.Connection, lead_id: int) -> bool:
+    """Lead NOVO sem site (ou com Facebook/agregador) vira SEM_SITE → QUALIFICADO na
+    hora, sem abrir navegador. Usado pelo modo caça do sourcing."""
+    lead = db.get_lead(con, lead_id)
+    if lead is None or lead["status"] != "NOVO":
+        return False
+    url = (lead["website_url"] or "").strip() or None
+    if url and not is_aggregator(url):
+        return False
+    _apply(con, lead_id, classify_no_site(url), url)
+    return True
+
+
 async def qualify_lead(con: sqlite3.Connection, browser, lead: sqlite3.Row, sem: asyncio.Semaphore) -> str:
     url = (lead["website_url"] or "").strip() or None
     if not url or is_aggregator(url):

@@ -62,9 +62,12 @@ CHROMIUM_PATH = _detect_browser()
 MAPS_DELAY_RANGE = (0.8, 2.2)
 # Quantas vezes rolar o feed de resultados antes de desistir (cada rolagem
 # carrega ~20 resultados; Maps satura em ~120 por query de qualquer forma).
-MAPS_MAX_SCROLLS = 12
+MAPS_MAX_SCROLLS = 30
 MAPS_RETRIES = 3
 MAPS_NAV_TIMEOUT_MS = 25_000
+
+# Verticais varridas pelo `lp hunt` quando não se passa --vertical.
+HUNT_VERTICALS = ["roof cleaning", "pressure washing", "gutter cleaning", "window cleaning", "house cleaning"]
 
 # ------------------------------------------------------------ qualificação
 # Site que demora mais que isso é SITE_QUEBRADO por definição do critério.

@@ -138,12 +138,12 @@ def qualification_by_region(con: sqlite3.Connection, by: str = "city") -> Table:
 
 def leads_per_query(con: sqlite3.Connection) -> Table:
     rows = con.execute("""
-        SELECT query, found, inserted, duplicates, elapsed_s, ran_at, error
+        SELECT query, found, inserted, duplicates, with_site, elapsed_s, ran_at, error
         FROM source_queries ORDER BY ran_at DESC LIMIT 200""").fetchall()
-    out = [[r["query"], r["found"], r["inserted"], r["duplicates"], r["elapsed_s"],
+    out = [[r["query"], r["found"], r["inserted"], r["duplicates"], r["with_site"] or 0, r["elapsed_s"],
             round(3600 * (r["inserted"] or 0) / r["elapsed_s"], 0) if r["elapsed_s"] else None,
             r["ran_at"][:16], (r["error"] or "")[:40]] for r in rows]
-    return (["query", "achados", "novos", "dup", "seg", "novos/h", "quando", "erro"], out)
+    return (["query", "achados", "novos", "dup", "com site", "seg", "novos/h", "quando", "erro"], out)
 
 
 def churn_monthly(con: sqlite3.Connection) -> Table:

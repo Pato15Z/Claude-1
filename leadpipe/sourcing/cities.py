@@ -25,3 +25,22 @@ def cities_for_state(state: str, min_pop: int = 15_000, limit: int | None = None
     rows = [c for c in _us_cities() if c["state"] == st and c["population"] >= min_pop]
     rows.sort(key=lambda c: -c["population"])
     return rows[:limit] if limit else rows
+
+
+@lru_cache(maxsize=1)
+def _us_counties() -> list[dict]:
+    import geonamescache
+    return geonamescache.GeonamesCache().get_us_counties()
+
+
+def counties_for_state(state: str) -> list[str]:
+    """Nomes de condado ("Licking County") — cobre a zona rural, onde mais falta site."""
+    st = state.upper()
+    return sorted(c["name"] for c in _us_counties() if c["state"] == st)
+
+
+def places_for_state(state: str, by: str = "city", min_pop: int = 15_000, limit: int | None = None) -> list[str]:
+    if by == "county":
+        out = counties_for_state(state)
+        return out[:limit] if limit else out
+    return [c["name"] for c in cities_for_state(state, min_pop, limit)]
