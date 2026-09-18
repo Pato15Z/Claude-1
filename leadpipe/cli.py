@@ -495,17 +495,19 @@ def hero_shot(lead_id: Optional[int] = typer.Argument(None, help="vazio = todos 
     async def go():
         async with async_playwright() as pw:
             b = await new_browser(pw)
-            ctx = await b.new_context(viewport=config.MOBILE_VIEWPORT, device_scale_factor=2, is_mobile=True, user_agent=config.MOBILE_UA)
+            ctxm = await b.new_context(viewport=config.MOBILE_VIEWPORT, device_scale_factor=2, is_mobile=True, user_agent=config.MOBILE_UA)
+            ctxd = await b.new_context(viewport={"width": 1280, "height": 800})
             try:
                 for r in rows:
-                    pg = await ctx.new_page()
-                    await pg.goto(Path(r["hero_path"], "index.html").resolve().as_uri())
-                    await pg.wait_for_timeout(400)
-                    await pg.evaluate("var b=document.getElementById('bottom'); if(b) b.remove(); document.body.classList.remove('pad')")
-                    out = Path(r["hero_path"]) / "preview.png"
-                    await pg.screenshot(path=str(out), full_page=True)
-                    await pg.close()
-                    con_.print(f"  #{r['id']} {out}")
+                    for ctx, name in ((ctxm, "preview.png"), (ctxd, "preview_desktop.png")):
+                        pg = await ctx.new_page()
+                        await pg.goto(Path(r["hero_path"], "index.html").resolve().as_uri())
+                        await pg.wait_for_timeout(600)
+                        await pg.evaluate("var b=document.getElementById('bottom'); if(b) b.remove(); document.body.classList.remove('pad')")
+                        out = Path(r["hero_path"]) / name
+                        await pg.screenshot(path=str(out), full_page=True)
+                        await pg.close()
+                        con_.print(f"  #{r['id']} {out}")
             finally:
                 await b.close()
     asyncio.run(go())
