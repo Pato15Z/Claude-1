@@ -44,20 +44,32 @@ def classify(http: HttpResult, render: RenderResult | None, signals: SignalRepor
     sig = {"http": {"error": http.error, "status": http.status, "elapsed_ms": http.elapsed_ms,
                     "final_url": http.final_url, "https": http.https, "bad_cert": http.bad_cert}}
     if render is not None:
-        sig["render"] = {"error": render.error, "metrics": render.metrics, "broken": render.broken_reasons}
+        sig["render"] = {"error": render.error, "status": render.status, "metrics": render.metrics, "broken": render.broken_reasons}
     if signals is not None:
         sig["old"] = signals.fired
 
-    if not http.ok:
-        labels = {"dns": "domínio não resolve", "timeout": f"timeout > {config.SITE_TIMEOUT_S:.0f}s",
-                  "connect": "conexão recusada", "http_4xx": f"HTTP {http.status}",
-                  "http_5xx": f"HTTP {http.status}", "bad_cert": "certificado inválido e sem fallback",
-                  "invalid_url": "URL inválida"}
-        return Verdict("SITE_QUEBRADO", labels.get(http.error or "", http.error or "erro"), sig)
+    labels = {"dns": "domínio não resolve", "timeout": f"timeout > {config.SITE_TIMEOUT_S:.0f}s",
+              "connect": "conexão recusada", "http_4xx": f"HTTP {http.status}",
+              "http_5xx": f"HTTP {http.status}", "bad_cert": "certificado inválido e sem fallback",
+              "invalid_url": "URL inválida"}
+    if http.error in ("dns", "invalid_url"):
+        return Verdict("SITE_QUEBRADO", labels[http.error], sig)
 
-    if render is not None:
-        if render.error == "timeout":
+    rendered = render is not None and render.ok
+    if not rendered:
+        # Navegador de verdade não abriu. Se o HTTP também falhou, é quebrado.
+        if not http.ok:
+            why = labels.get(http.error or "", http.error or "erro")
+            if render is not None and render.error:
+                why += f"; navegador: {render.error}"
+            return Verdict("SITE_QUEBRADO", why, sig)
+        if render is not None and render.error == "timeout":
             return Verdict("SITE_QUEBRADO", f"render mobile: timeout > {config.SITE_TIMEOUT_S:.0f}s", sig)
+    else:
+        # Página abriu no navegador. Se os DOIS (httpx e navegador) dizem 4xx/5xx,
+        # é erro de verdade (404, 500). Só o httpx com 403 = anti-bot, ignora.
+        if render.status and render.status >= 400 and not http.ok:
+            return Verdict("SITE_QUEBRADO", f"HTTP {render.status}", sig)
         if render.broken_reasons:
             return Verdict("SITE_QUEBRADO", "render mobile: " + "; ".join(render.broken_reasons), sig)
 
@@ -67,4 +79,5 @@ def classify(http: HttpResult, render: RenderResult | None, signals: SignalRepor
 
     fired = (signals.fired if signals else {})
     note = f"1 sinal fraco: {next(iter(fired))}" if fired else "sem sinais"
-    return Verdict("SITE_OK", f"responde em {http.elapsed_ms}ms, render ok, {note}", sig)
+    how = "render ok" if rendered else "sem render, HTML ok"
+    return Verdict("SITE_OK", f"responde em {http.elapsed_ms}ms, {how}, {note}", sig)

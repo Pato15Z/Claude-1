@@ -116,12 +116,15 @@ async def enrich_lead(con: sqlite3.Connection, ctx, lead: sqlite3.Row, sem: asyn
 
 
 async def run(con: sqlite3.Connection, limit: int | None = None, redo: bool = False, web_search: bool | None = None,
-              gbp: bool = True, progress=None) -> dict:
+              gbp: bool = True, progress=None, site_status: str | None = None) -> dict:
     from playwright.async_api import async_playwright
 
     web_search = config.ENRICH_WEB_SEARCH if web_search is None else web_search
     st = "('QUALIFICADO','ENRIQUECIDO')" if redo else "('QUALIFICADO')"
-    sql = f"SELECT * FROM leads WHERE status IN {st} ORDER BY CASE site_status WHEN 'SEM_SITE' THEN 0 ELSE 1 END, id"
+    sql = f"SELECT * FROM leads WHERE status IN {st}"
+    if site_status:
+        sql += f" AND site_status='{site_status}'"
+    sql += " ORDER BY CASE site_status WHEN 'SEM_SITE' THEN 0 ELSE 1 END, id"
     if limit:
         sql += f" LIMIT {int(limit)}"
     leads = con.execute(sql).fetchall()

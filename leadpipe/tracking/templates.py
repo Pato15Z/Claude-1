@@ -51,7 +51,11 @@ If you want it, just reply "keep it" and I'll move it to your domain. If not, th
     },
 }
 
-SENDER = {"sender_name": "SEU NOME", "sender_phone": "SEU TELEFONE", "video_url": "LINK DO VIDEO"}
+import os as _os
+# Preencha uma vez: LEADPIPE_SENDER_NAME, LEADPIPE_SENDER_PHONE, LEADPIPE_VIDEO_URL
+SENDER = {"sender_name": _os.environ.get("LEADPIPE_SENDER_NAME", "SEU NOME"),
+          "sender_phone": _os.environ.get("LEADPIPE_SENDER_PHONE", "SEU TELEFONE"),
+          "video_url": _os.environ.get("LEADPIPE_VIDEO_URL", "LINK DO VIDEO")}
 
 
 def render(touch_number: int, lead, touch1_date: str | None = None, sender: dict | None = None) -> dict:

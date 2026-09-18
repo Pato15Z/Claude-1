@@ -24,7 +24,13 @@ _METRICS_JS = r"""
   // o layout de 980px é esperado e já conta como sinal de site antigo.
   const hasViewportMeta = !!document.querySelector('meta[name="viewport" i]');
   const contentW = Math.max(vw, doc.scrollWidth, document.body ? document.body.scrollWidth : 0);
-  const overflowPx = hasViewportMeta ? contentW - __SCREEN_W__ : 0;
+  // Duas formas de "estourar" que o usuário realmente vê:
+  //  (a) o Chrome mobile alargou a viewport para caber o conteúdo (tudo encolhe);
+  //  (b) a página rola para o lado. Menu escondido fora da tela com
+  //      overflow-x:hidden NÃO rola, e por isso não conta (era falso positivo).
+  let canScrollX = false;
+  try { window.scrollTo(80, 0); canScrollX = (window.scrollX || (document.scrollingElement||doc).scrollLeft) >= 30; window.scrollTo(0, 0); } catch (e) {}
+  const overflowPx = hasViewportMeta ? ((vw > __SCREEN_W__ ? vw - __SCREEN_W__ : 0) || (canScrollX ? contentW - __SCREEN_W__ : 0)) : 0;
 
   // texto: percorre nós de texto visíveis, pesa por nº de caracteres
   const walker = document.createTreeWalker(document.body || doc, NodeFilter.SHOW_TEXT);
@@ -60,7 +66,7 @@ _METRICS_JS = r"""
 
   const jq = (window.jQuery && window.jQuery.fn && window.jQuery.fn.jquery) || null;
   const hasTel = !!document.querySelector('a[href^="tel:"]');
-  return { vw, hasViewportMeta, contentW, scale: Math.round(scale * 100) / 100, overflowPx, textChars: total, smallTextChars: small,
+  return { vw, hasViewportMeta, contentW, canScrollX, scale: Math.round(scale * 100) / 100, overflowPx, textChars: total, smallTextChars: small,
            smallTextRatio: total ? small / total : 0,
            ctaCount: ctas.length, ctaOk, ctaMin: ctaSizes.length ? Math.min(...ctaSizes) : null,
            jquery: jq, hasTel };
@@ -73,6 +79,7 @@ class RenderResult:
     ok: bool = False
     error: str | None = None
     final_url: str | None = None
+    status: int | None = None
     html: str | None = None
     screenshot_path: str | None = None
     metrics: dict = field(default_factory=dict)
@@ -102,7 +109,8 @@ async def render(browser, url: str, screenshot_path: Path, timeout_s: float = co
     page = await ctx.new_page()
     try:
         try:
-            await page.goto(url, timeout=int(timeout_s * 1000), wait_until="domcontentloaded")
+            resp = await page.goto(url, timeout=int(timeout_s * 1000), wait_until="domcontentloaded")
+            res.status = resp.status if resp else None
         except Exception as e:
             res.error = "timeout" if "Timeout" in type(e).__name__ or "timeout" in str(e).lower() else "nav_error"
             return res
@@ -130,9 +138,11 @@ async def render(browser, url: str, screenshot_path: Path, timeout_s: float = co
         m = res.metrics
         if m.get("overflowPx", 0) > config.OVERFLOW_TOLERANCE_PX:
             res.broken_reasons.append(f"overflow horizontal +{int(m['overflowPx'])}px")
-        if m.get("textChars", 0) > 200 and m.get("smallTextRatio", 0) > config.SMALL_TEXT_RATIO_BROKEN:
+        if m.get("textChars", 0) > 400 and m.get("smallTextRatio", 0) > config.SMALL_TEXT_RATIO_BROKEN:
             res.broken_reasons.append(f"{int(100 * m['smallTextRatio'])}% do texto <{config.SMALL_TEXT_MIN_PX}px")
-        if m.get("ctaCount", 0) > 0 and m.get("ctaOk", 0) == 0:
+        # Só reprova se há botões de verdade (≥3) e NENHUM tem alvo de toque
+        # decente. 1–2 botões pequenos costumam ser o hambúrguer do menu.
+        if m.get("ctaCount", 0) >= 3 and m.get("ctaOk", 0) == 0:
             res.broken_reasons.append(f"todos os {m['ctaCount']} botões <{config.TAP_TARGET_MIN_PX}px (menor: {m.get('ctaMin')}px)")
         res.ok = True
         return res

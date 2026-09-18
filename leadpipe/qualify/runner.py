@@ -42,13 +42,20 @@ async def qualify_lead(con: sqlite3.Connection, browser, lead: sqlite3.Row, sem:
         rend = None
         sig = None
         shot = None
-        if http.ok:
+        if http.error not in ("dns", "invalid_url"):
+            # Mesmo com 403/cert ruim/conexão recusada no httpx, um navegador de
+            # verdade muitas vezes abre (anti-bot, redirecionamentos estranhos).
+            from .http_check import normalize_url
+            target = http.final_url or http.url or normalize_url(url)
             shot_path = config.SCREENSHOT_DIR / f"{lead['id']}.png"
-            rend = await render(browser, http.final_url or http.url or url, shot_path)
+            rend = await render(browser, target, shot_path)
             shot = rend.screenshot_path
-            html = rend.html or http.html or ""
-            jq = (rend.metrics or {}).get("jquery")
-            sig = detect(html, https_ok=http.https and not http.bad_cert, bad_cert=http.bad_cert, jquery_version=jq)
+            html = (rend.html if rend.ok else None) or http.html or ""
+            if html:
+                final = (rend.final_url if rend.ok else None) or http.final_url or ""
+                https_ok = final.startswith("https://") and not http.bad_cert
+                jq = (rend.metrics or {}).get("jquery") if rend.ok else None
+                sig = detect(html, https_ok=https_ok, bad_cert=http.bad_cert, jquery_version=jq)
         v = classify(http, rend, sig)
     _apply(con, lead["id"], v, url, http, shot)
     return v.site_status

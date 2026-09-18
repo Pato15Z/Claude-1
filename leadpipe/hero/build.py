@@ -127,12 +127,14 @@ def write_site_scaffold(site_dir: Path, domain: str) -> None:
 
 
 def build(con: sqlite3.Connection, limit: int | None = None, include_low_priority: bool = False, rebuild: bool = False,
-          progress=None) -> dict:
+          progress=None, site_status: str | None = None) -> dict:
     site_dir = config.HERO_SITE_DIR
     write_site_scaffold(site_dir, config.HERO_DOMAIN)
     where = "status IN ('ENRIQUECIDO','HERO_PRONTO')" if rebuild else "status='ENRIQUECIDO'"
     if not include_low_priority:
         where += " AND COALESCE(priority,'normal')<>'baixa'"
+    if site_status:
+        where += f" AND site_status='{site_status}'"
     sql = f"SELECT * FROM leads WHERE {where} AND phone_e164 IS NOT NULL ORDER BY CASE site_status WHEN 'SEM_SITE' THEN 0 ELSE 1 END, id"
     if limit:
         sql += f" LIMIT {int(limit)}"

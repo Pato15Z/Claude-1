@@ -14,9 +14,47 @@ DB_PATH = Path(os.environ.get("LEADPIPE_DB", DATA_DIR / "leadpipe.db"))
 SCREENSHOT_DIR = DATA_DIR / "screenshots"
 DEBUG_DIR = DATA_DIR / "debug"
 
-# Caminho explícito do Chromium. Vazio = deixa o Playwright achar o dele
-# (instalado com `playwright install chromium`).
-CHROMIUM_PATH = os.environ.get("LEADPIPE_CHROMIUM_PATH") or None
+# Navegador. Ordem: LEADPIPE_CHROMIUM_PATH → Chromium do Playwright (se
+# instalado) → Chrome/Edge do sistema. Assim funciona sem download extra.
+_SYSTEM_BROWSERS = [
+    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser",
+]
+
+
+def _playwright_chromium_installed() -> bool:
+    try:
+        from playwright._impl._driver import compute_driver_executable  # noqa: F401
+        import json as _json
+        import playwright as _pw
+        base = Path(os.environ.get("PLAYWRIGHT_BROWSERS_PATH") or (
+            Path(os.environ.get("LOCALAPPDATA", "")) / "ms-playwright" if os.name == "nt"
+            else Path.home() / ".cache" / "ms-playwright"))
+        pkg = Path(_pw.__file__).parent / "driver" / "package" / "browsers.json"
+        rev = next(b["revision"] for b in _json.loads(pkg.read_text())["browsers"] if b["name"] == "chromium")
+        return (base / f"chromium-{rev}").exists()
+    except Exception:
+        return False
+
+
+def _detect_browser() -> str | None:
+    env = os.environ.get("LEADPIPE_CHROMIUM_PATH")
+    if env:
+        return env
+    if _playwright_chromium_installed():
+        return None  # Playwright usa o dele
+    for p in _SYSTEM_BROWSERS:
+        if p and os.path.exists(p):
+            return p
+    return None
+
+
+CHROMIUM_PATH = _detect_browser()
 
 # ---------------------------------------------------------------- sourcing
 # Pausa entre listagens no Google Maps (segundos, faixa aleatória). Muito

@@ -181,6 +181,19 @@ def qualify_show(lead_id: int):
         con_.print("  " + (r["signals_json"] or "")[:600])
 
 
+@qualify_app.command("audit")
+def qualify_audit(site_status: Optional[str] = typer.Option(None, "--site", help="ex: SITE_QUEBRADO"), limit: int = 200):
+    """Lista id, status, motivo e URL de todos os checados — para caçar falso positivo."""
+    con = _con()
+    where, args = ["site_status IS NOT NULL"], []
+    if site_status:
+        where.append("site_status=?"); args.append(site_status.upper())
+    rows = con.execute(f"SELECT id, name, site_status, site_reason, website_url FROM leads WHERE {' AND '.join(where)} ORDER BY site_status, id LIMIT ?", [*args, limit]).fetchall()
+    _print_table("auditoria", ["id", "nome", "status", "motivo", "site"], [[r["id"], r["name"][:30], r["site_status"], (r["site_reason"] or "")[:70], (r["website_url"] or "")[:40]] for r in rows])
+    counts = con.execute("SELECT site_status, COUNT(*) FROM leads WHERE site_status IS NOT NULL GROUP BY 1").fetchall()
+    con_.print("  ".join(f"{r[0]}={r[1]}" for r in counts))
+
+
 # ============================================================== lead
 
 @lead_app.command("show")
@@ -366,6 +379,7 @@ def enrich_run(
     redo: bool = typer.Option(False, help="refaz também leads já ENRIQUECIDO"),
     no_search: bool = typer.Option(False, help="não busca Facebook/Instagram na web"),
     no_gbp: bool = typer.Option(False, help="não abre o Google Maps para fotos"),
+    only: Optional[str] = typer.Option(None, help="só leads com este site_status, ex: SEM_SITE"),
 ):
     """Para leads QUALIFICADO: email, Facebook/Instagram, 3–6 imagens, logo, paleta → ENRIQUECIDO."""
     from .enrich.runner import run
@@ -378,7 +392,8 @@ def enrich_run(
         else:
             con_.print(f"  #{lead['id']:<5} img={r['images']} email={'✓' if r['email'] else '·'} fb={'✓' if r['fb'] else '·'} logo={'✓' if r['logo'] else '·'}  {lead['name'][:40]}")
 
-    agg = asyncio.run(run(con, limit=limit, redo=redo, web_search=not no_search, gbp=not no_gbp, progress=progress))
+    agg = asyncio.run(run(con, limit=limit, redo=redo, web_search=not no_search, gbp=not no_gbp, progress=progress,
+                          site_status=only.upper() if only else None))
     if not agg:
         con_.print("nada a enriquecer (nenhum lead QUALIFICADO)"); return
     n = agg["leads"] or 1
@@ -405,6 +420,7 @@ def hero_build(
     limit: Optional[int] = typer.Option(None),
     include_low: bool = typer.Option(False, help="inclui leads sem imagem (hero com fundo genérico)"),
     rebuild: bool = typer.Option(False, help="regenera também os já HERO_PRONTO"),
+    only: Optional[str] = typer.Option(None, help="só leads com este site_status, ex: SEM_SITE"),
 ):
     """Gera os heros em batch em data/hero_site/{slug}/ e marca HERO_PRONTO."""
     from .hero.build import build
@@ -416,7 +432,8 @@ def hero_build(
     def progress(lead, url, has_img):
         con_.print(f"  #{lead['id']:<5} {'🖼' if has_img else '▫'} {url}")
 
-    r = build(con, limit=limit, include_low_priority=include_low, rebuild=rebuild, progress=progress)
+    r = build(con, limit=limit, include_low_priority=include_low, rebuild=rebuild, progress=progress,
+              site_status=only.upper() if only else None)
     if not r:
         con_.print("nada a gerar (nenhum lead ENRIQUECIDO com prioridade normal; use --include-low)"); return
     con_.print(f"[bold]{r['built']} heros em {r['_elapsed_s']}s → {r['site_dir']}  (erros: {r['errors']})[/bold]")
@@ -492,6 +509,55 @@ def touch_draft(lead_id: Optional[int] = typer.Argument(None), n: Optional[int] 
             con_.print(f"[bold]Subject:[/bold] {d['subject']}")
         con_.print(d["body"])
         con_.print(f"[dim]registrar: lp touch log {lid} --n {tn} --channel {d['channel']}[/dim]")
+
+
+# ============================================================== ui / pipeline
+
+@app.command("ui")
+def ui(port: int = 8090, no_browser: bool = typer.Option(False, help="não abre o navegador")):
+    """Painel visual local: leads, fila do dia, rascunhos, botões para rodar cada etapa."""
+    from .ui.server import serve
+    serve(port, open_browser=not no_browser)
+
+
+@app.command("pipeline")
+def pipeline(
+    vertical: str = typer.Option(...), state: str = typer.Option(...),
+    city: list[str] = typer.Option(None, "--city"), min_pop: int = 20000, max_cities: Optional[int] = None,
+    max_results: Optional[int] = None,
+    only: str = typer.Option("SEM_SITE", help="enriquecer/gerar hero só para este site_status; 'all' = todos"),
+    no_search: bool = False, no_gbp: bool = False, headful: bool = False,
+):
+    """Esteira completa: busca → qualifica → enriquece → gera heros. Um comando."""
+    from .enrich.runner import run as enrich_run_
+    from .hero.build import build
+    from .qualify.runner import run as qualify_run_
+    from .sourcing.google_maps import ScrapeOptions, scrape_many
+
+    con = _con()
+    st = state.upper()
+    cities = list(city) if city else [c["name"] for c in cities_for_state(st, min_pop, max_cities)]
+    queries = [(f"{vertical} {c} {st}", vertical, c, st) for c in cities]
+    con_.rule(f"1/4 sourcing: {len(queries)} cidades")
+    total = asyncio.run(scrape_many(con, queries, ScrapeOptions(headless=not headful, max_results=max_results),
+                                    progress=lambda q, s, skipped=False: con_.print("  " + (f"[dim]pulado[/dim] {q}" if skipped else _stats_line(q, s)))))
+    con_.print("[bold]" + _stats_line("TOTAL", total) + "[/bold]")
+    con_.rule("2/4 qualificação")
+    counts = asyncio.run(qualify_run_(con, vertical=vertical, state=st))
+    counts.pop("_elapsed_s", None)
+    con_.print(f"  {counts}")
+    filt = None if only.lower() == "all" else only.upper()
+    con_.rule(f"3/4 enriquecimento ({filt or 'todos'})")
+    agg = asyncio.run(enrich_run_(con, web_search=not no_search, gbp=not no_gbp, site_status=filt,
+                                  progress=lambda l, r: con_.print(f"  #{l['id']} {l['name'][:35]} {r}")))
+    con_.print(f"  {agg}")
+    con_.rule(f"4/4 heros ({filt or 'todos'})")
+    r = build(con, include_low_priority=True, site_status=filt, progress=lambda l, u, img: con_.print(f"  #{l['id']} {'🖼' if img else '▫'} {u}"))
+    con_.print(f"  {r.get('built', 0)} heros em {r.get('site_dir', '')}")
+    con_.rule("resumo")
+    cols, rows = reports.qualification_by_region(con, "city")
+    _print_table("Qualificação por cidade", cols, rows, max_rows=30)
+    con_.print("próximo: [bold]lp ui[/bold] para ver tudo numa tela")
 
 
 # ============================================================== doctor

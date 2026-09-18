@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>leadpipe</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--line:#262b36;--ink:#e6e8ee;--mute:#8b93a7;--ok:#3ddc84;--warn:#ffb020;--bad:#ff5c5c;--info:#5aa9ff;--acc:#7c6cff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+header h1{font-size:16px;font-weight:800;letter-spacing:.02em}
+nav button{background:none;border:1px solid transparent;color:var(--mute);padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+nav button.on{color:var(--ink);background:var(--card);border-color:var(--line)}
+main{padding:14px 16px;max-width:1400px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.tile b{display:block;font-size:24px;font-weight:800}
+.tile span{color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:14px}
+.card h2{font-size:13px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;white-space:nowrap}
+th{color:var(--mute);font-weight:600;font-size:12px}
+tr.row{cursor:pointer}tr.row:hover td{background:#1d2130}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.SEM_SITE{background:#123d2a;color:var(--ok)}.SITE_QUEBRADO{background:#3d2f12;color:var(--warn)}.SITE_ANTIGO{background:#12303d;color:var(--info)}.SITE_OK{background:#22252e;color:var(--mute)}
+.st{background:#252a3a;color:#c9cfe3}
+.thumb{width:36px;height:64px;object-fit:cover;object-position:top;border-radius:4px;background:#000;border:1px solid var(--line)}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 10px;border-radius:999px;cursor:pointer;font-weight:600;font-size:12px}
+.chip.on{border-color:var(--acc);background:#23204a}
+input,select{background:#0f1115;border:1px solid var(--line);color:var(--ink);padding:7px 9px;border-radius:8px;font:inherit}
+.btn{background:var(--acc);color:#fff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px}
+.btn.sec{background:#2a2f3d}.btn.ok{background:#1f7a4a}.btn.warn{background:#7a5a1f}.btn.bad{background:#7a2a2a}
+.btn:disabled{opacity:.5;cursor:default}
+.drawer{position:fixed;top:0;right:0;width:min(560px,100%);height:100%;background:var(--card);border-left:1px solid var(--line);box-shadow:-10px 0 40px rgba(0,0,0,.5);transform:translateX(105%);transition:transform .2s;overflow:auto;z-index:10;padding:16px}
+.drawer.on{transform:none}
+.drawer h3{font-size:18px;margin-bottom:2px}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:4px 10px;font-size:13px;margin:10px 0}
+.kv div:nth-child(odd){color:var(--mute)}
+.kv a{color:var(--info)}
+pre{white-space:pre-wrap;background:#0f1115;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px/1.45 ui-monospace,Consolas,monospace;max-height:320px;overflow:auto}
+.actions{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.shot{width:100%;max-width:260px;border:1px solid var(--line);border-radius:8px;display:block}
+.gal{display:flex;gap:6px;flex-wrap:wrap}.gal img{height:70px;border-radius:6px;border:1px solid var(--line)}
+.muted{color:var(--mute)}
+.log{font:12px/1.4 ui-monospace,Consolas,monospace;background:#0f1115;border:1px solid var(--line);border-radius:8px;padding:8px;max-height:260px;overflow:auto;white-space:pre-wrap}
+.good{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.close{position:absolute;top:10px;right:12px;background:none;border:0;color:var(--mute);font-size:22px;cursor:pointer}
+@media(max-width:700px){th:nth-child(n+6),td:nth-child(n+6){display:none}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>leadpipe</h1>
+  <nav>
+    <button data-tab="painel" class="on">Painel</button>
+    <button data-tab="leads">Leads</button>
+    <button data-tab="fila">Fila de hoje</button>
+    <button data-tab="rodar">Rodar</button>
+  </nav>
+  <span class="muted" id="clock"></span>
+</header>
+<main>
+  <section id="tab-painel">
+    <div class="grid" id="tiles"></div>
+    <div class="card"><h2>Qualificação por cidade</h2><div id="region"></div></div>
+    <div class="card"><h2>Conversão por lead</h2><div id="funnel"></div></div>
+    <div class="card"><h2>Resposta por canal e por toque</h2><div id="channels"></div></div>
+  </section>
+
+  <section id="tab-leads" hidden>
+    <div class="filters">
+      <span class="muted">Site:</span>
+      <button class="chip on" data-site="">todos</button>
+      <button class="chip" data-site="SEM_SITE">SEM SITE</button>
+      <button class="chip" data-site="SITE_QUEBRADO">quebrado</button>
+      <button class="chip" data-site="SITE_ANTIGO">antigo</button>
+      <button class="chip" data-site="SITE_OK">ok (descartado)</button>
+      <span class="muted" style="margin-left:10px">Etapa:</span>
+      <select id="fstatus"><option value="">todas</option>
+        <option>NOVO</option><option>QUALIFICADO</option><option>ENRIQUECIDO</option><option>HERO_PRONTO</option><option>ENVIADO</option><option>RESPONDEU</option><option>CALL_AGENDADA</option><option>FECHADO</option><option>PERDIDO</option><option>DESCARTADO</option></select>
+      <input id="fq" placeholder="buscar nome / cidade / telefone" style="min-width:220px">
+      <span class="muted" id="lcount"></span>
+    </div>
+    <div class="card" style="padding:0"><table id="ltable"><thead><tr><th></th><th>id</th><th>nome</th><th>cidade</th><th>site</th><th>etapa</th><th>telefone</th><th>nota</th><th>email</th><th>fotos</th><th>hero</th><th>motivo</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section id="tab-fila" hidden>
+    <div class="card"><h2>Devidos hoje (leste → oeste)</h2><div id="queue"></div></div>
+  </section>
+
+  <section id="tab-rodar" hidden>
+    <div class="card"><h2>1. Buscar empresas no Google Maps</h2>
+      <div class="form">
+        <input id="r-vertical" value="roof cleaning" placeholder="vertical">
+        <input id="r-state" value="OH" style="width:70px" placeholder="UF">
+        <input id="r-cities" placeholder="cidades separadas por vírgula (vazio = todas do estado)" style="min-width:320px">
+        <input id="r-max" placeholder="máx por cidade (vazio = tudo)" style="width:190px">
+        <button class="btn" data-run="source">Buscar</button>
+        <button class="btn sec" data-run="pipeline" title="busca → qualifica → enriquece → gera heros, tudo de uma vez">Esteira completa</button>
+      </div>
+      <p class="muted" style="margin-top:6px">Dica: quem não tem site aparece no fim da lista do Google. Deixe "máx" vazio e use cidades menores.</p>
+    </div>
+    <div class="card"><h2>2. Etapas</h2>
+      <div class="actions">
+        <button class="btn" data-run="qualify">Qualificar os NOVOS</button>
+        <button class="btn sec" data-run="qualify-recheck">Reavaliar todos</button>
+        <button class="btn ok" data-run="enrich-nosite">Enriquecer só SEM SITE</button>
+        <button class="btn sec" data-run="enrich">Enriquecer todos qualificados</button>
+        <button class="btn" data-run="hero">Gerar heros</button>
+        <button class="btn sec" data-run="hero-all">Gerar heros (inclui sem foto)</button>
+      </div>
+    </div>
+    <div class="card"><h2>Saída</h2><div id="jobs"></div></div>
+  </section>
+</main>
+
+<div class="drawer" id="drawer"><button class="close" id="dclose">×</button><div id="dbody"></div></div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const api = (p) => fetch(p).then(r => r.json());
+const post = (b) => fetch('/api/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b)}).then(r => r.json());
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let site = '', tab = 'painel';
+
+function table(rows, cols, cls){
+  if(!rows || !rows.length) return '<p class="muted">sem dados</p>';
+  cols = cols || Object.keys(rows[0]);
+  return '<table><thead><tr>' + cols.map(c=>'<th>'+esc(c)+'</th>').join('') + '</tr></thead><tbody>' +
+    rows.map(r => '<tr>' + cols.map(c => { const v = r[c]; let k=''; if(/SATURADA/.test(v)) k=' class="bad"'; else if(/VIRGEM/.test(v)) k=' class="good"'; return '<td'+k+'>'+esc(v)+'</td>'; }).join('') + '</tr>').join('') + '</tbody></table>';
+}
+
+async function loadPainel(){
+  const s = await api('/api/summary');
+  const st = Object.fromEntries(s.status.map(r => [r.status, r.leads]));
+  const order = ['NOVO','QUALIFICADO','ENRIQUECIDO','HERO_PRONTO','ENVIADO','RESPONDEU','CALL_AGENDADA','FECHADO','PERDIDO','DESCARTADO'];
+  $('#tiles').innerHTML = order.map(k => `<div class="tile"><b>${st[k]||0}</b><span>${k.replace('_',' ')}</span></div>`).join('');
+  $('#region').innerHTML = table(s.region);
+  $('#funnel').innerHTML = table(s.funnel);
+  $('#channels').innerHTML = table(s.channels) + '<br>' + table(s.touches);
+}
+
+async function loadLeads(){
+  const q = new URLSearchParams({site, status: $('#fstatus').value, q: $('#fq').value});
+  const rows = await api('/api/leads?' + q);
+  $('#lcount').textContent = rows.length + ' leads';
+  $('#ltable tbody').innerHTML = rows.map(r => `<tr class="row" data-id="${r.id}">
+    <td>${r.screenshot_path ? `<img class="thumb" src="/shots/${r.id}.png" loading="lazy">` : ''}</td>
+    <td>${r.id}</td><td><b>${esc(r.name)}</b></td><td>${esc(r.city||'')}, ${esc(r.state||'')}</td>
+    <td>${r.site_status ? `<span class="pill ${r.site_status}">${r.site_status.replace('SITE_','').replace('_',' ')}</span>` : '<span class="muted">—</span>'}</td>
+    <td><span class="pill st">${r.status}</span></td>
+    <td>${esc(r.phone_e164||'')}</td><td>${r.rating ?? ''} (${r.review_count ?? 0})</td>
+    <td>${r.email ? '✓' : ''}</td><td>${r.n_images || ''}</td>
+    <td>${r.slug ? `<a href="/hero/${r.slug}/" target="_blank" onclick="event.stopPropagation()">abrir</a>` : ''}</td>
+    <td class="muted" title="${esc(r.site_reason||'')}">${esc((r.site_reason||'').slice(0,60))}</td></tr>`).join('');
+  $$('#ltable tr.row').forEach(tr => tr.onclick = () => openLead(+tr.dataset.id));
+}
+
+async function openLead(id){
+  const d = await api('/api/lead/' + id);
+  const contact = {email: d.email, facebook_page: d.facebook_url || d.instagram_url, instagram: d.instagram_url, ligacao: d.phone_e164}[d.draft.channel] || '—';
+  $('#dbody').innerHTML = `
+    <h3>#${d.id} ${esc(d.name)}</h3>
+    <div class="muted">${esc(d.city||'')}, ${esc(d.state||'')} · ${esc(d.vertical)} · ${d.rating ?? '—'} ★ (${d.review_count ?? 0})</div>
+    <div class="actions">
+      ${d.site_status ? `<span class="pill ${d.site_status}">${d.site_status}</span>` : ''} <span class="pill st">${d.status}</span>
+      ${d.slug ? `<a class="btn sec" href="/hero/${d.slug}/" target="_blank">ver hero</a>` : ''}
+      ${d.website_url ? `<a class="btn sec" href="${esc(d.website_url)}" target="_blank">site atual</a>` : ''}
+      ${d.gbp_url ? `<a class="btn sec" href="${esc(d.gbp_url)}" target="_blank">Google</a>` : ''}
+    </div>
+    <div class="kv">
+      <div>telefone</div><div>${esc(d.phone_e164||'—')}</div>
+      <div>email</div><div>${esc(d.email||'—')} <span class="muted">${d.email_source ? `(${d.email_source}, ${d.email_confidence})` : ''}</span></div>
+      <div>facebook</div><div>${d.facebook_url ? `<a href="${esc(d.facebook_url)}" target="_blank">${esc(d.facebook_url)}</a>` : '—'}</div>
+      <div>instagram</div><div>${d.instagram_url ? `<a href="${esc(d.instagram_url)}" target="_blank">${esc(d.instagram_url)}</a>` : '—'}</div>
+      <div>endereço</div><div>${esc(d.address_full||'—')}</div>
+      <div>fuso</div><div>${esc(d.timezone||'—')}</div>
+      <div>motivo</div><div>${esc(d.site_reason||'—')}</div>
+      <div>hero</div><div>${d.hero_url ? esc(d.hero_url) + ` <span class="muted">(expira ${d.hero_expires_at})</span>` : '—'}</div>
+    </div>
+    ${d.screenshot_path ? `<div class="muted">site atual no celular:</div><img class="shot" src="/shots/${d.id}.png">` : ''}
+    ${d.images.length ? `<div class="muted" style="margin-top:8px">fotos:</div><div class="gal">${d.images.map(i => `<img src="/img/${d.id}/${i.path.split(/[\\\\/]/).pop()}" title="${i.kind}">`).join('')}</div>` : ''}
+    <h2 style="margin-top:14px;font-size:13px;color:var(--mute)">PRÓXIMO TOQUE: ${d.next_touch} · ${d.draft.channel} · contato: ${esc(contact)}</h2>
+    ${d.draft.subject ? `<div><b>Assunto:</b> ${esc(d.draft.subject)}</div>` : ''}
+    <pre id="draft">${esc(d.draft.body)}</pre>
+    <div class="actions">
+      <button class="btn sec" onclick="navigator.clipboard.writeText(document.getElementById('draft').innerText)">copiar texto</button>
+      <button class="btn ok" onclick="act({op:'touch', lead_id:${d.id}, n:${d.next_touch}, channel:'${d.draft.channel}'})">marcar toque ${d.next_touch} enviado</button>
+      <button class="btn" onclick="act({op:'reply', lead_id:${d.id}})">respondeu</button>
+      <button class="btn warn" onclick="act({op:'status', lead_id:${d.id}, status:'CALL_AGENDADA'})">call agendada</button>
+      <button class="btn ok" onclick="act({op:'status', lead_id:${d.id}, status:'FECHADO'})">fechado</button>
+      <button class="btn bad" onclick="act({op:'status', lead_id:${d.id}, status:'PERDIDO'})">perdido</button>
+      <button class="btn bad" onclick="act({op:'status', lead_id:${d.id}, status:'DESCARTADO'})">descartar</button>
+    </div>
+    <div class="form"><input id="setfield" placeholder="campo (email, facebook_url, notes...)" style="width:200px"><input id="setvalue" placeholder="valor" style="min-width:220px"><button class="btn sec" onclick="act({op:'set', lead_id:${d.id}, field:$('#setfield').value, value:$('#setvalue').value})">salvar</button></div>
+    <h2 style="margin-top:14px;font-size:13px;color:var(--mute)">HISTÓRICO</h2>
+    ${table(d.history)}
+    ${d.touches.length ? table(d.touches) : ''}
+    ${d.checks.length ? '<h2 style="margin-top:14px;font-size:13px;color:var(--mute)">CHECAGENS DO SITE</h2>' + table(d.checks) : ''}`;
+  $('#drawer').classList.add('on');
+  window._lead = id;
+}
+
+async function act(b){
+  const r = await post(b);
+  if(r.error){ alert(r.error); return; }
+  if(window._lead) openLead(window._lead);
+  loadLeads(); loadQueue(); loadPainel();
+}
+
+async function loadQueue(){
+  const rows = await api('/api/queue');
+  if(!rows.length){ $('#queue').innerHTML = '<p class="muted">ninguém devido hoje. Gere heros (Rodar → Gerar heros) para entrarem na fila do toque 1.</p>'; return; }
+  const contact = i => ({email: i.email, facebook_page: i.facebook_url || i.instagram_url, instagram: i.instagram_url, ligacao: i.phone}[i.channel] || '—');
+  $('#queue').innerHTML = '<table><thead><tr><th>id</th><th>nome</th><th>cidade</th><th>hora local</th><th>toque</th><th>canal</th><th>contato</th><th>atraso</th><th></th></tr></thead><tbody>' +
+    rows.map(i => `<tr class="row" data-id="${i.lead_id}"><td>${i.lead_id}</td><td><b>${esc(i.name)}</b></td><td>${esc(i.city)}, ${esc(i.state)}</td><td>${i.local_now} <span class="muted">${i.tz.split('/').pop()}</span></td><td>${i.touch_number}</td><td>${i.channel}</td><td>${esc(contact(i))}</td><td>${i.days_overdue>0 ? i.days_overdue+'d' : ''}</td>
+      <td><button class="btn ok" onclick="event.stopPropagation();act({op:'touch', lead_id:${i.lead_id}, n:${i.touch_number}, channel:'${i.channel}'})">enviado</button></td></tr>`).join('') + '</tbody></table>';
+  $$('#queue tr.row').forEach(tr => tr.onclick = () => openLead(+tr.dataset.id));
+}
+
+async function loadJobs(){
+  const jobs = await api('/api/jobs');
+  $('#jobs').innerHTML = jobs.length ? jobs.map(j => `<div style="margin-bottom:10px"><b>${esc(j.cmd)}</b> <span class="${j.status==='ok'?'good':j.status==='rodando'?'warn':'bad'}">${j.status}</span><div class="log">${esc(j.log.slice(-6000))}</div></div>`).join('') : '<p class="muted">nada rodando</p>';
+  if(jobs.some(j => j.status === 'rodando')) setTimeout(loadJobs, 2000); else { loadPainel(); loadLeads(); }
+}
+
+$$('nav button').forEach(b => b.onclick = () => { tab = b.dataset.tab; $$('nav button').forEach(x => x.classList.toggle('on', x === b)); $$('main section').forEach(s => s.hidden = s.id !== 'tab-' + tab); refresh(); });
+$$('.chip[data-site]').forEach(c => c.onclick = () => { site = c.dataset.site; $$('.chip[data-site]').forEach(x => x.classList.toggle('on', x === c)); loadLeads(); });
+$('#fstatus').onchange = loadLeads; $('#fq').oninput = () => { clearTimeout(window._t); window._t = setTimeout(loadLeads, 250); };
+$('#dclose').onclick = () => { $('#drawer').classList.remove('on'); window._lead = null; };
+$$('[data-run]').forEach(b => b.onclick = async () => {
+  const body = {op:'run', what:b.dataset.run, vertical:$('#r-vertical').value, state:$('#r-state').value, cities:$('#r-cities').value, max_results:$('#r-max').value};
+  const r = await post(body); if(r.error) alert(r.error); loadJobs();
+});
+function refresh(){ ({painel: loadPainel, leads: loadLeads, fila: loadQueue, rodar: loadJobs})[tab](); }
+setInterval(() => $('#clock').textContent = new Date().toLocaleTimeString(), 1000);
+refresh();
+</script>
+</body>
+</html>

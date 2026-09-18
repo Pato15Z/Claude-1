@@ -48,6 +48,26 @@ lp source add --name "Bob's Roof Cleaning" --vertical "roof cleaning" --phone "6
 lp source import-csv leads.csv --vertical "roof cleaning"     # colunas: name, phone, address, city, state, website, rating, reviews, facebook, instagram, email
 ```
 
+## O jeito visual (recomendado)
+
+```bash
+lp.exe ui          # abre http://127.0.0.1:8090 no navegador
+```
+
+Abas: **Painel** (contagens, % por cidade), **Leads** (filtro SEM SITE / quebrado /
+antigo, miniatura do site, gaveta com rascunho do próximo toque e botões
+"enviado", "respondeu", "fechado"), **Fila de hoje**, **Rodar** (botões para
+buscar no Maps, qualificar, enriquecer só SEM SITE, gerar heros).
+
+Esteira inteira em um comando (busca → qualifica → enriquece → heros, focado
+em quem não tem site):
+
+```bash
+lp.exe pipeline --vertical "roof cleaning" --state OH --city Newark --city Zanesville
+```
+
+Atualizar o código sem perder o banco: `.\update.ps1` (Windows).
+
 ## Fluxo diário (90 min)
 
 ```bash
@@ -69,9 +89,11 @@ lp hero expire                    # derruba heros com 30 dias sem resposta
 lp report all                     # ou: lp report html && abrir data/report.html
 ```
 
-Variáveis de ambiente úteis: `LEADPIPE_HERO_DOMAIN=seudominio.com` (as URLs
-viram `{slug}.seudominio.com`), `LEADPIPE_WEB_SEARCH=0` (desliga a busca de
-Facebook/Instagram no DuckDuckGo).
+Variáveis de ambiente úteis: `LEADPIPE_SENDER_NAME`, `LEADPIPE_SENDER_PHONE`,
+`LEADPIPE_VIDEO_URL` (entram nos rascunhos), `LEADPIPE_HERO_DOMAIN=seudominio.com`
+(URLs `{slug}.seudominio.com`; sem isso os heros ficam só locais),
+`LEADPIPE_WEB_SEARCH=0` (desliga a busca de Facebook/Instagram),
+`LEADPIPE_CHROMIUM_PATH` (navegador; por padrão acha o Chrome/Edge sozinho).
 
 ## Critérios de qualificação (todos em `leadpipe/config.py`)
 
@@ -107,6 +129,8 @@ que o dono vê no celular.
 lp db export --status QUALIFICADO          # CSV para planilha
 lp db sql "SELECT city, COUNT(*) FROM leads GROUP BY 1"
 lp qualify show 123                        # motivo detalhado + métricas
+lp qualify audit --site SITE_QUEBRADO      # todos os motivos de uma vez (caçar falso positivo)
+lp qualify run --recheck                   # reavaliar todo mundo depois de ajustar critério
 lp enrich show 123                         # email, redes, imagens, paleta
 lp hero list
 lp report queries                          # leads/hora por query de sourcing

@@ -38,7 +38,7 @@ leadpipe = "leadpipe.cli:app"   # Windows: "lp" colide com o alias Out-Printer d
 include = ["leadpipe*"]
 
 [tool.setuptools.package-data]
-leadpipe = ["hero/*.html"]
+leadpipe = ["hero/*.html", "ui/*.html"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
