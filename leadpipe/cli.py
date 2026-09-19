@@ -429,6 +429,7 @@ def hero_build(
     rebuild: bool = typer.Option(False, help="regenera também os já HERO_PRONTO"),
     only: Optional[str] = typer.Option(None, help="só leads com este site_status, ex: SEM_SITE"),
     id: Optional[int] = typer.Option(None, "--id", help="só este lead (regenera)"),
+    template: Optional[str] = typer.Option(None, help="nome do template (lp hero templates)"),
 ):
     """Gera os heros em batch em data/hero_site/{slug}/ e marca HERO_PRONTO."""
     from .hero.build import build
@@ -441,7 +442,7 @@ def hero_build(
         con_.print(f"  #{lead['id']:<5} {'🖼' if has_img else '▫'} {url}")
 
     r = build(con, limit=limit, include_low_priority=include_low or id is not None, rebuild=rebuild or id is not None, progress=progress,
-              site_status=only.upper() if only else None, lead_id=id)
+              site_status=only.upper() if only else None, lead_id=id, template=template)
     if not r:
         con_.print("nada a gerar (nenhum lead ENRIQUECIDO com prioridade normal; use --include-low)"); return
     con_.print(f"[bold]{r['built']} heros em {r['_elapsed_s']}s → {r['site_dir']}  (erros: {r['errors']})[/bold]")
@@ -478,6 +479,13 @@ def hero_expire(dry_run: bool = typer.Option(False, help="só lista")):
     _print_table("heros expirados" + (" (simulação)" if dry_run else ""), ["id", "nome", "url", "status"], [[r["id"], r["name"], r["url"], r["status"]] for r in rows])
     if rows and not dry_run:
         con_.print("rode `lp hero deploy` para refletir a remoção")
+
+
+@hero_app.command("templates")
+def hero_templates():
+    """Lista os templates disponíveis (pacote + data/templates)."""
+    from .hero.build import list_templates
+    _print_table("templates", ["nome", "origem", "arquivo"], [[t["name"], t["source"], t["path"]] for t in list_templates()])
 
 
 @hero_app.command("shot")

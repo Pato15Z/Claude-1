@@ -120,6 +120,11 @@ ENRICH_WEB_SEARCH = os.environ.get("LEADPIPE_WEB_SEARCH", "1") != "0"
 HERO_DOMAIN = os.environ.get("LEADPIPE_HERO_DOMAIN", "SEUDOMINIO.com")
 HERO_SITE_DIR = DATA_DIR / "hero_site"
 HERO_TTL_DAYS = 30
+# Templates: os do pacote (leadpipe/hero/templates) + os seus em data/templates.
+# O nome (sem .html) é o que se escolhe por lead ou no build.
+HERO_TEMPLATE_DEFAULT = os.environ.get("LEADPIPE_HERO_TEMPLATE", "classic")
+USER_TEMPLATES_DIR = DATA_DIR / "templates"
+VIDEOS_DIR = DATA_DIR / "videos"
 
 # ------------------------------------------------------------- sequência
 # Dia relativo ao toque 1 em que cada toque vence, e canal de cada um.
@@ -139,5 +144,5 @@ REGION_VIRGIN_ABOVE = 0.40
 
 
 def ensure_dirs() -> None:
-    for d in (DATA_DIR, SCREENSHOT_DIR, DEBUG_DIR, IMAGES_DIR, HERO_SITE_DIR):
+    for d in (DATA_DIR, SCREENSHOT_DIR, DEBUG_DIR, IMAGES_DIR, HERO_SITE_DIR, USER_TEMPLATES_DIR, VIDEOS_DIR):
         d.mkdir(parents=True, exist_ok=True)

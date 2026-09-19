@@ -22,9 +22,41 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .. import config, db
 from ..normalize import slug as make_slug
-from .content import content_for
+from .content import content_for, place_labels
 
-_env = Environment(loader=FileSystemLoader(str(Path(__file__).parent)), autoescape=select_autoescape(["html"]))
+PKG_TEMPLATES = Path(__file__).parent / "templates"
+ASSETS = Path(__file__).parent / "assets"
+
+
+def _env() -> Environment:
+    # data/templates (seus) tem prioridade sobre os do pacote com o mesmo nome
+    return Environment(loader=FileSystemLoader([str(config.USER_TEMPLATES_DIR), str(PKG_TEMPLATES)]),
+                       autoescape=select_autoescape(["html"]))
+
+
+def list_templates() -> list[dict]:
+    out = {}
+    for d, src in ((PKG_TEMPLATES, "pacote"), (config.USER_TEMPLATES_DIR, "seu")):
+        if d.exists():
+            for f in sorted(d.glob("*.html")):
+                out[f.stem] = {"name": f.stem, "source": src, "path": str(f)}
+    return list(out.values())
+
+
+def template_source(name: str) -> str:
+    for d in (config.USER_TEMPLATES_DIR, PKG_TEMPLATES):
+        f = d / f"{name}.html"
+        if f.exists():
+            return f.read_text(encoding="utf-8")
+    raise FileNotFoundError(name)
+
+
+def save_user_template(name: str, html: str) -> Path:
+    name = re.sub(r"[^a-z0-9_-]", "", name.lower()) or "custom"
+    config.USER_TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
+    f = config.USER_TEMPLATES_DIR / f"{name}.html"
+    f.write_text(html, encoding="utf-8")
+    return f
 
 
 def phone_display(e164: str | None) -> str:
@@ -109,12 +141,20 @@ def hero_data(con: sqlite3.Connection, lead: sqlite3.Row, site_dir: Path) -> dic
         "year": datetime.now().year,
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=config.HERO_TTL_DAYS)).date().isoformat(),
     }
+    # casa com etiquetas de serviço (imagem fixa de referência + cor do negócio)
+    house_src = ASSETS / "house.webp"
+    if house_src.exists():
+        shutil.copy2(house_src, img_out / "house.webp")
+        data["house_image"] = "img/house.webp"
+        data["house_labels"] = place_labels(c["services"])
+    data["template"] = lead["hero_template"] or config.HERO_TEMPLATE_DEFAULT
     (out / "hero.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
     return data
 
 
-def render(data: dict) -> str:
-    return _env.get_template("template.html").render(**data)
+def render(data: dict, template: str | None = None) -> str:
+    name = template or data.get("template") or config.HERO_TEMPLATE_DEFAULT
+    return _env().get_template(f"{name}.html").render(**data)
 
 
 def write_site_scaffold(site_dir: Path, domain: str) -> None:
@@ -148,7 +188,7 @@ def write_site_scaffold(site_dir: Path, domain: str) -> None:
 
 
 def build(con: sqlite3.Connection, limit: int | None = None, include_low_priority: bool = False, rebuild: bool = False,
-          progress=None, site_status: str | None = None, lead_id: int | None = None) -> dict:
+          progress=None, site_status: str | None = None, lead_id: int | None = None, template: str | None = None) -> dict:
     site_dir = config.HERO_SITE_DIR
     write_site_scaffold(site_dir, config.HERO_DOMAIN)
     where = "status IN ('ENRIQUECIDO','HERO_PRONTO')" if rebuild else "status='ENRIQUECIDO'"
@@ -168,6 +208,9 @@ def build(con: sqlite3.Connection, limit: int | None = None, include_low_priorit
     t0 = time.time(); built = 0; errors = 0; urls = []
     for lead in leads:
         try:
+            if template:
+                db.update_lead(con, lead["id"], hero_template=template)
+                lead = db.get_lead(con, lead["id"])
             data = hero_data(con, lead, site_dir)
             html = render(data)
             (site_dir / data["slug"] / "index.html").write_text(html, encoding="utf-8")

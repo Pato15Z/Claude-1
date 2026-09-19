@@ -50,6 +50,7 @@ def test_build_and_slug_dedup(con, monkeypatch):
     assert html.count('href="tel:+16145550101"') >= 4   # topo, hero, final, barra fixa
     assert html.count("<article>") == 3 and "Eileen A" in html and ">X<" not in html   # 3 melhores, curtas fora
     assert "maps?q=39.96,-82.99" in html and "Get directions" in html
+    assert (Path(la["hero_path"]) / "img" / "house.webp").exists() and html.count('class="lbl"') == 4
     assert (Path(la["hero_path"]) / "img" / "before.jpg").exists() and (Path(la["hero_path"]) / "hero.json").exists()
     assert (config.HERO_SITE_DIR / "vercel.json").exists()
     r2 = build(con, include_low_priority=True)
@@ -105,3 +106,24 @@ def test_touch_templates(con):
         assert "https://bobs.heros.test" in d["body"] and "{" not in d["body"]
     d1 = render_touch(1, lead)
     assert "Hi there" in d1["body"] and "don't have a website" in d1["body"] and "4.8 stars from 57 reviews" in d1["body"]
+
+
+def test_place_labels():
+    from leadpipe.hero.content import place_labels
+    labs = place_labels(["Soft wash roof cleaning", "Gutter cleaning", "Window cleaning", "Driveway & concrete", "Decks & fences", "Free estimates"])
+    assert len(labs) == 6 and len({(l["x"], l["y"]) for l in labs}) == 6
+    assert labs[0]["y"] < 20 and labs[3]["y"] > 90            # telhado no alto, calçada embaixo
+    assert all(l["side"] in ("left", "right") for l in labs)
+
+
+def test_user_template_override(con, monkeypatch, tmp_path):
+    from leadpipe.hero.build import list_templates, save_user_template, template_source
+    monkeypatch.setattr(config, "USER_TEMPLATES_DIR", tmp_path / "tpl")
+    monkeypatch.setattr(config, "HERO_SITE_DIR", config.DATA_DIR / "hero_site")
+    save_user_template("meu", "<html><body><h1>{{ name }}</h1><a href=\"tel:{{ phone_e164 }}\">x</a></body></html>")
+    assert {t["name"] for t in list_templates()} >= {"classic", "meu"}
+    a = _enriched(con, "Tpl Co", "614-555-0222")
+    r = build(con, template="meu")
+    assert r["built"] == 1
+    html = Path(db.get_lead(con, a)["hero_path"], "index.html").read_text()
+    assert "<h1>Tpl Co</h1>" in html and "classic" not in template_source("meu")

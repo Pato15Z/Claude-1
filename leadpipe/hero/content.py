@@ -51,3 +51,48 @@ def content_for(vertical: str, city: str | None) -> dict:
         "services": c["services"],
         "cta": c["cta"],
     }
+
+
+# ---------------------------------------------------------------- casa com etiquetas
+# Pontos da imagem fixa de referência (assets/house.webp, 1344x752), em fração
+# da largura/altura. Cada serviço vira uma etiqueta apontando para o ponto que
+# faz sentido (telhado, calha, janela...). Sem IA: casamento por palavra-chave.
+import re as _re
+
+ANCHORS = {
+    "roof":     [(0.50, 0.13), (0.30, 0.20), (0.74, 0.22)],
+    "gutter":   [(0.17, 0.31), (0.87, 0.31), (0.60, 0.53)],
+    "window":   [(0.47, 0.42), (0.75, 0.45), (0.24, 0.70)],
+    "siding":   [(0.19, 0.58), (0.90, 0.60)],
+    "driveway": [(0.72, 0.94)],
+    "door":     [(0.44, 0.76)],
+    "garage":   [(0.73, 0.78)],
+    "yard":     [(0.12, 0.88), (0.30, 0.92)],
+}
+_KEYS = [
+    ("roof", _re.compile(r"roof|shingle|moss|algae|streak|soft ?wash", _re.I)),
+    ("gutter", _re.compile(r"gutter|downspout|guard", _re.I)),
+    ("window", _re.compile(r"window|screen|skylight|glass|storefront|track", _re.I)),
+    ("driveway", _re.compile(r"driveway|concrete|patio|walkway|sidewalk|pavers?", _re.I)),
+    ("siding", _re.compile(r"siding|house|exterior|pressure|power|wash", _re.I)),
+    ("garage", _re.compile(r"garage|deck|fence", _re.I)),
+    ("door", _re.compile(r"door|entry|kitchen|bath|deep|recurring|move", _re.I)),
+    ("yard", _re.compile(r"lawn|yard|landscap|estimate|insured", _re.I)),
+]
+
+
+def place_labels(services: list[str], max_labels: int = 6) -> list[dict]:
+    """Devolve [{text, x, y, side}] com posições em %, sem repetir âncora."""
+    used: set[tuple] = set()
+    out: list[dict] = []
+    order = list(ANCHORS)
+    for svc in services[:max_labels]:
+        group = next((g for g, rx in _KEYS if rx.search(svc)), None)
+        cands = (ANCHORS[group] if group else []) + [a for g in order for a in ANCHORS[g]]
+        pt = next((a for a in cands if a not in used), None)
+        if pt is None:
+            break
+        used.add(pt)
+        x, y = pt
+        out.append({"text": svc, "x": round(x * 100, 1), "y": round(y * 100, 1), "side": "left" if x < 0.5 else "right"})
+    return out

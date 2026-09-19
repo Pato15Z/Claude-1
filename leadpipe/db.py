@@ -198,7 +198,8 @@ def connect(path: Path | None = None) -> sqlite3.Connection:
 _NEW_COLUMNS = {
     "source_queries": [("with_site", "INTEGER")],
     "leads": [("slug", "TEXT"), ("palette_json", "TEXT"), ("logo_path", "TEXT"), ("enriched_at", "TEXT"),
-              ("enrich_notes", "TEXT"), ("hero_built_at", "TEXT"), ("hero_path", "TEXT")],
+              ("enrich_notes", "TEXT"), ("hero_built_at", "TEXT"), ("hero_path", "TEXT"),
+              ("hero_template", "TEXT"), ("video_url", "TEXT"), ("video_path", "TEXT"), ("video_done_at", "TEXT")],
 }
 
 
@@ -334,4 +335,5 @@ LEAD_COLUMNS = {
     "sourced_at", "status", "site_status", "site_reason", "site_checked_at", "screenshot_path",
     "priority", "hero_url", "hero_expires_at", "notes", "created_at", "updated_at",
     "slug", "palette_json", "logo_path", "enriched_at", "enrich_notes", "hero_built_at", "hero_path",
+    "hero_template", "video_url", "video_path", "video_done_at",
 }
