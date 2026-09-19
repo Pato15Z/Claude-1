@@ -46,7 +46,7 @@ def test_build_and_slug_dedup(con, monkeypatch):
     assert lc["status"] == "ENRIQUECIDO"  # prioridade baixa não entra sem --include-low
     html = Path(la["hero_path"], "index.html").read_text()
     assert 'href="tel:+16145550101"' in html and "Bob&#39;s Roof Cleaning" in html and "Before" in html
-    assert "4.8" not in html and "★★★★★" in html and ">57<" not in html and "a week ago" not in html
+    assert "<b>4.8</b>" in html and "★★★★★" in html and ">57<" not in html and "a week ago" not in html
     assert html.count('href="tel:+16145550101"') >= 4   # topo, hero, final, barra fixa
     assert html.count("<article>") == 3 and "Eileen A" in html and ">X<" not in html   # 3 melhores, curtas fora
     assert "maps?q=39.96,-82.99" in html and "Get directions" in html
