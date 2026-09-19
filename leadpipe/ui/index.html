@@ -71,6 +71,9 @@ pre{white-space:pre-wrap;background:#0f1115;border:1px solid var(--line);border-
 .check.ro{cursor:default;opacity:.85}
 .qr{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .qr canvas{background:#fff;padding:8px;border-radius:10px}
+.spin{width:16px;height:16px;border:3px solid #3a3f4d;border-top-color:var(--acc);border-radius:50%;display:inline-block;animation:sp 1s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.btn .spin{width:14px;height:14px;border-width:2px;border-top-color:#fff}
 .toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#23262f;border:1px solid var(--line);color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;z-index:30;display:none}
 .bar{height:8px;border-radius:99px;background:#252a3a;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc)}
 iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12px;background:#fff}
@@ -126,7 +129,7 @@ iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12
 <!-- ===================== NOVO LEAD ===================== -->
 <section id="tab-novo" hidden>
   <div class="card">
-    <h2>Novo lead (Facebook, indicação, qualquer lugar)</h2>
+    <h2>Adicionar lead (Facebook, indicação, qualquer lugar)</h2>
     <p class="help">Preencha o que tiver. Nome e telefone bastam para gerar o hero. Site vazio = SEM SITE, já qualificado.</p>
     <div class="form" style="margin-top:8px">
       <div class="w"><label class="f">Nome do negócio *</label><input id="n-name" placeholder="Bob's Roof Cleaning"></div>
@@ -157,7 +160,7 @@ iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12
 <!-- ===================== TEMPLATES ===================== -->
 <section id="tab-templates" hidden>
   <div class="card">
-    <h2>Templates do hero</h2>
+    <h2>Modelos de site (templates do hero)</h2>
     <p class="help">Cada template é um arquivo HTML com campos entre chaves duplas ({{ name }}, {{ phone_display }}, {{ tagline }}, {{ services }}, {{ reviews }}, {{ hero_image }}, {{ house_labels }}...). Edite, salve com um nome novo e escolha por lead ou como padrão.</p>
     <div class="actions">
       <select id="t-select" style="width:auto;min-width:200px"></select>
@@ -176,7 +179,7 @@ iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12
 <!-- ===================== VÍDEOS ===================== -->
 <section id="tab-videos" hidden>
   <div class="card">
-    <h2>Checklist por lead</h2>
+    <h2>Checklist por lead: vídeo, envio, resposta</h2>
     <p class="help">Marque o vídeo quando gravar. Enviado e respondeu vêm dos toques registrados. Toque no nome para abrir o lead e o texto do email.</p>
     <div class="scroll"><table id="vtable"><thead><tr><th>nome</th><th>hero</th><th>vídeo</th><th>enviado</th><th>respondeu</th><th>call</th><th>fechou</th><th class="hide-m">arquivo / link</th></tr></thead><tbody></tbody></table></div>
   </div>
@@ -184,29 +187,43 @@ iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12
 
 <!-- ===================== FILA ===================== -->
 <section id="tab-fila" hidden>
-  <div class="card"><h2>Devidos hoje (leste → oeste)</h2><div class="scroll" id="queue"></div></div>
+  <div class="card"><h2>Contatos de hoje (ordem: leste → oeste)</h2><div class="scroll" id="queue"></div></div>
 </section>
 
 <!-- ===================== RODAR ===================== -->
 <section id="tab-rodar" hidden>
-  <div class="card"><h2>Caçar quem não tem site</h2>
+  <div class="card" id="runbox" hidden style="border-color:var(--acc)">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="spin" id="runspin"></span>
+      <b id="runtitle">rodando…</b>
+      <span class="muted" id="runtime"></span>
+      <span class="sp" style="flex:1"></span>
+      <button class="btn sec sm" onclick="$('#runbox').hidden=true">fechar</button>
+    </div>
+    <div class="log" id="runlog" style="margin-top:8px;max-height:240px">aguardando saída…</div>
+  </div>
+  <div class="card" id="errbox" hidden style="border-color:var(--bad);color:var(--bad)"></div>
+  <div class="card"><h2>Buscar negócios sem site (Google Maps)</h2>
     <div class="form">
       <div><label class="f">Estado</label><input id="h-state" value="OH" maxlength="2"></div>
       <div><label class="f">Varrer por</label><select id="h-by"><option value="county">condado (zona rural)</option><option value="city">cidade</option></select></div>
       <div><label class="f">Máx. de lugares (vazio = todos)</label><input id="h-max" inputmode="numeric" placeholder="ex: 5"></div>
       <div class="w"><label class="f">Verticais (vírgula; vazio = as 5)</label><input id="h-vertical" placeholder="roof cleaning, pressure washing"></div>
     </div>
-    <div class="actions"><button class="btn ok" data-run="hunt">Caçar SEM SITE</button></div>
-    <p class="help">Lê só o card do Google e descarta quem tem site antes de clicar. Ohio inteiro = 440 buscas ≈ 3 h; comece com 3–5 lugares.</p>
+    <div class="actions"><button class="btn ok" data-run="hunt" data-label="Buscar negócios sem site">Buscar negócios sem site</button></div>
+    <p class="help">Abre o Google Maps escondido, lê cada empresa e descarta na hora quem tem site. Cada lugar × vertical leva 20–40 s. Ohio inteiro = 440 buscas ≈ 3 h; comece com 3–5 lugares.</p>
   </div>
-  <div class="card"><h2>Etapas</h2>
+  <div class="card"><h2>Próximas etapas (na ordem)</h2>
     <div class="actions">
-      <button class="btn" data-run="qualify">Qualificar NOVOS</button>
-      <button class="btn ok" data-run="enrich-nosite">Enriquecer SEM SITE</button>
-      <button class="btn" data-run="hero-all">Gerar heros</button>
-      <button class="btn sec" data-run="qualify-recheck">Reavaliar todos</button>
-      <button class="btn sec" data-run="enrich">Enriquecer todos</button>
-      <button class="btn sec" data-run="expire">Expirar heros (30d)</button>
+      <button class="btn ok" data-run="enrich-nosite" data-label="1. Buscar fotos e avaliações (sem site)">1. Buscar fotos e avaliações (sem site)</button>
+      <button class="btn" data-run="hero-all" data-label="2. Gerar os sites (heros)">2. Gerar os sites (heros)</button>
+    </div>
+    <p class="help">Depois: aba Checklist para gravar o vídeo e marcar o envio.</p>
+    <div class="actions" style="margin-top:12px">
+      <button class="btn sec sm" data-run="qualify" data-label="Qualificar leads novos">Qualificar leads novos</button>
+      <button class="btn sec sm" data-run="qualify-recheck" data-label="Reavaliar todos os sites">Reavaliar todos os sites</button>
+      <button class="btn sec sm" data-run="enrich" data-label="Fotos e avaliações (todos)">Fotos e avaliações (todos)</button>
+      <button class="btn sec sm" data-run="expire" data-label="Derrubar heros com 30 dias">Derrubar heros com 30 dias</button>
     </div>
   </div>
   <div class="card"><h2>Busca completa (com e sem site)</h2>
@@ -216,9 +233,9 @@ iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12
       <div><label class="f">Máx por cidade</label><input id="r-max" inputmode="numeric"></div>
       <div class="w"><label class="f">Cidades (vírgula; vazio = todas)</label><input id="r-cities"></div>
     </div>
-    <div class="actions"><button class="btn sec" data-run="source">Buscar</button><button class="btn sec" data-run="pipeline">Esteira completa</button></div>
+    <div class="actions"><button class="btn sec" data-run="source" data-label="Buscar todos">Buscar todos</button><button class="btn sec" data-run="pipeline" data-label="Buscar + qualificar + fotos + heros">Buscar + qualificar + fotos + heros</button></div>
   </div>
-  <div class="card"><h2>Saída</h2><div id="jobs"></div></div>
+  <div class="card"><h2>Histórico de execuções</h2><div id="jobs"></div></div>
 </section>
 </main>
 
@@ -233,12 +250,12 @@ const api = p => fetch(p).then(r => r.json());
 const post = b => fetch('/api/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b)}).then(r => r.json());
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const TABS = [['painel','Painel','M3 13h8V3H3v10zm10 8h8V11h-8v10zM3 21h8v-6H3v6zm10-18v6h8V3h-8z'],
+              ['rodar','Buscar leads','M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'],
               ['leads','Leads','M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z'],
-              ['novo','Novo','M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'],
-              ['templates','Templates','M3 3h18v4H3V3zm0 6h8v12H3V9zm10 0h8v5h-8V9zm0 7h8v5h-8v-5z'],
-              ['videos','Vídeos','M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z'],
-              ['fila','Fila','M12 2a10 10 0 100 20 10 10 0 000-20zm.5 5H11v6l5.25 3.15.75-1.23-4.5-2.67V7z'],
-              ['rodar','Rodar','M8 5v14l11-7z']];
+              ['novo','Adicionar','M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'],
+              ['videos','Checklist','M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'],
+              ['fila','Contatos hoje','M12 2a10 10 0 100 20 10 10 0 000-20zm.5 5H11v6l5.25 3.15.75-1.23-4.5-2.67V7z'],
+              ['templates','Modelos','M3 3h18v4H3V3zm0 6h8v12H3V9zm10 0h8v5h-8V9zm0 7h8v5h-8v-5z']];
 let site = '', tab = location.hash.replace('#','') || 'painel', templates = [], verticals = [];
 
 function toast(m){ const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2600); }
@@ -458,20 +475,47 @@ async function loadQueue(){
 // ---------- rodar
 let _pollT = null;
 async function loadJobs(){
-  const jobs = await api('/api/jobs');
-  $('#jobs').innerHTML = jobs.length ? jobs.map(j => `<div style="margin-bottom:10px"><b>${esc(j.cmd)}</b> <span class="${j.status==='ok'?'good':j.status==='rodando'?'warn':'bad'}">${j.status}</span><div class="log">${esc(j.log.slice(-6000))}</div></div>`).join('') : '<p class="muted">nada rodando</p>';
-  $('#status').textContent = jobs.some(j => j.status === 'rodando') ? '● rodando' : '';
+  let jobs = [];
+  try { jobs = await api('/api/jobs'); } catch(e){ $('#status').textContent = 'sem conexão com o app'; return []; }
+  $('#jobs').innerHTML = jobs.length ? jobs.map(j => `<div style="margin-bottom:10px"><b>${esc(j.cmd)}</b> <span class="${j.status==='ok'?'good':j.status==='rodando'?'warn':'bad'}">${j.status}</span><div class="log">${esc(j.log.slice(-6000))}</div></div>`).join('') : '<p class="muted">nada rodou ainda</p>';
+  const running = jobs.some(j => j.status === 'rodando');
+  $('#status').innerHTML = running ? '<span class="spin" style="vertical-align:middle"></span> rodando' : '';
+  if(jobs.length && tab === 'rodar') renderRun(jobs);
+  if(running) setRunning(true); else setRunning(false);
   return jobs;
 }
 function pollJobs(done){
   clearTimeout(_pollT);
   (async function tick(){ const jobs = await loadJobs(); if(jobs.some(j => j.status === 'rodando')) _pollT = setTimeout(tick, 2500); else { if(done) done(); loadPainel(); } })();
 }
+let _runStart = null;
+function showErr(m){ const e = $('#errbox'); e.hidden = false; e.innerHTML = '<b>Erro:</b> ' + esc(m); toast('erro'); }
+function setRunning(on){
+  $$('[data-run]').forEach(b => { b.disabled = on; if(on){ b.dataset.label = b.dataset.label || b.textContent; b.innerHTML = '<span class="spin"></span> rodando…'; } else if(b.dataset.label){ b.textContent = b.dataset.label; } });
+}
+async function renderRun(jobs){
+  const j = jobs[0]; if(!j) return;
+  const box = $('#runbox'); box.hidden = false;
+  const running = j.status === 'rodando';
+  $('#runspin').style.display = running ? 'inline-block' : 'none';
+  $('#runtitle').textContent = (running ? 'Rodando: ' : (j.status === 'ok' ? 'Concluído: ' : 'Falhou: ')) + j.cmd;
+  $('#runtitle').className = running ? 'warn' : (j.status === 'ok' ? 'good' : 'bad');
+  if(_runStart) $('#runtime').textContent = Math.round((Date.now() - _runStart)/1000) + ' s';
+  const log = $('#runlog'); log.textContent = (j.log && j.log.trim()) ? j.log.slice(-4000) : (running ? 'iniciando… (a primeira linha aparece em até 30 s)' : '(sem saída)'); log.scrollTop = log.scrollHeight;
+  if(!running && j.status !== 'ok') showErr('o comando terminou com erro. Veja a saída acima e me mande a foto.');
+}
 $$('[data-run]').forEach(b => b.onclick = async () => {
   const w = b.dataset.run;
+  $('#errbox').hidden = true;
   const body = w === 'hunt' ? {op:'run', what:'hunt', state:$('#h-state').value, by:$('#h-by').value, vertical:$('#h-vertical').value, max_places:$('#h-max').value}
              : {op:'run', what:w, vertical:$('#r-vertical').value, state:$('#r-state').value, cities:$('#r-cities').value, max_results:$('#r-max').value};
-  const r = await post(body); if(r.error){ toast(r.error); return; } toast('iniciado'); pollJobs();
+  setRunning(true); _runStart = Date.now();
+  $('#runbox').hidden = false; $('#runtitle').textContent = 'Iniciando…'; $('#runlog').textContent = 'enviando comando…'; window.scrollTo({top:0, behavior:'smooth'});
+  let r;
+  try { r = await post(body); } catch(e){ setRunning(false); showErr('não consegui falar com o app (' + e + '). A janela preta do app.bat ainda está aberta?'); return; }
+  if(r.error){ setRunning(false); showErr(r.error); return; }
+  toast('iniciado');
+  pollJobs(() => setRunning(false));
 });
 
 // ---------- wiring
