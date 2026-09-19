@@ -481,6 +481,30 @@ def hero_expire(dry_run: bool = typer.Option(False, help="só lista")):
         con_.print("rode `lp hero deploy` para refletir a remoção")
 
 
+@hero_app.command("one")
+def hero_one(id: int = typer.Option(..., "--id"), template: Optional[str] = None, no_gbp: bool = False):
+    """Um lead do início ao fim: enriquece (se ainda não), gera o hero e tira a foto."""
+    from .enrich.runner import run as enrich_run_
+    from .hero.build import build
+
+    con = _con()
+    lead = db.get_lead(con, id)
+    if not lead:
+        con_.print("[red]lead não existe[/red]"); raise typer.Exit(1)
+    if lead["status"] == "NOVO":
+        from .qualify.runner import auto_qualify_no_site
+        auto_qualify_no_site(con, id)
+    if not lead["enriched_at"]:
+        con_.print("enriquecendo...")
+        asyncio.run(enrich_run_(con, lead_id=id, redo=True, gbp=not no_gbp, web_search=config.ENRICH_WEB_SEARCH,
+                                progress=lambda l, r: con_.print(f"  {r}")))
+    r = build(con, include_low_priority=True, rebuild=True, lead_id=id, template=template,
+              progress=lambda l, u, img: con_.print(f"  {'🖼' if img else '▫'} {u}"))
+    if r.get("built"):
+        hero_shot(id)
+    con_.print("pronto")
+
+
 @hero_app.command("templates")
 def hero_templates():
     """Lista os templates disponíveis (pacote + data/templates)."""
@@ -563,10 +587,11 @@ def touch_draft(lead_id: Optional[int] = typer.Argument(None), n: Optional[int] 
 # ============================================================== ui / pipeline
 
 @app.command("ui")
-def ui(port: int = 8090, no_browser: bool = typer.Option(False, help="não abre o navegador")):
-    """Painel visual local: leads, fila do dia, rascunhos, botões para rodar cada etapa."""
+def ui(port: int = 8090, no_browser: bool = typer.Option(False, help="não abre o navegador"),
+       public: bool = typer.Option(False, help="abre túnel público (cloudflared) para acessar do celular")):
+    """Aplicativo: painel, leads, novo lead, templates, vídeos, fila, rodar. --public = URL para o celular."""
     from .ui.server import serve
-    serve(port, open_browser=not no_browser)
+    serve(port, open_browser=not no_browser, public=public)
 
 
 @app.command("pipeline")

@@ -25,6 +25,15 @@ cara de reverter.
 4. Escolher email/FB/IG de envio e colocar seu nome/telefone/link do vídeo em
    `lp touch draft` (ou editar `leadpipe/tracking/templates.py`).
 
+## 0.1 Acesso pelo celular (como funciona e limites)
+
+O app roda no seu PC. `app.bat` abre um túnel Cloudflare gratuito ("quick
+tunnel") que dá uma URL pública temporária apontando para o seu PC. Vale
+enquanto a janela estiver aberta; a URL muda a cada abertura (o QR no Painel
+mostra a atual). Para URL fixa: conta Cloudflare gratuita + túnel nomeado, ou
+hospedar o app numa VPS (~US$5/mês) com Chrome instalado. Senha:
+`LEADPIPE_UI_TOKEN`. Sem senha, qualquer pessoa com a URL entra.
+
 ## 1. Decisões tomadas
 
 | Decisão | Escolha | Por quê | Alternativa e quando trocar |

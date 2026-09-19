@@ -2,254 +2,487 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
 <title>leadpipe</title>
 <style>
-:root{--bg:#0f1115;--card:#171a21;--line:#262b36;--ink:#e6e8ee;--mute:#8b93a7;--ok:#3ddc84;--warn:#ffb020;--bad:#ff5c5c;--info:#5aa9ff;--acc:#7c6cff}
+:root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--line:#262b36;--ink:#e8eaf0;--mute:#8b93a7;--ok:#3ddc84;--warn:#ffb020;--bad:#ff5c5c;--info:#5aa9ff;--acc:#7c6cff;--acc2:#6355e8}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
-header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
-header h1{font-size:16px;font-weight:800;letter-spacing:.02em}
-nav button{background:none;border:1px solid transparent;color:var(--mute);padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600}
-nav button.on{color:var(--ink);background:var(--card);border-color:var(--line)}
-main{padding:14px 16px;max-width:1400px;margin:0 auto}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
-.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
-.tile b{display:block;font-size:24px;font-weight:800}
-.tile span{color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:14px}
-.card h2{font-size:13px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+html{-webkit-text-size-adjust:100%}
+body{font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+a{color:var(--info)}
+header{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(15,17,21,.95);backdrop-filter:blur(8px);z-index:5}
+header h1{font-size:17px;font-weight:800;letter-spacing:.02em}
+header .sp{flex:1}
+nav.top{display:none;gap:4px}
+nav.top button{background:none;border:1px solid transparent;color:var(--mute);padding:7px 12px;border-radius:9px;cursor:pointer;font-weight:700;font-size:14px}
+nav.top button.on{color:var(--ink);background:var(--card);border-color:var(--line)}
+nav.bottom{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(23,26,33,.97);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:6;overflow-x:auto}
+nav.bottom button{flex:1;min-width:58px;background:none;border:0;color:var(--mute);font-size:11px;font-weight:700;padding:4px 2px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.bottom button svg{width:22px;height:22px}
+nav.bottom button.on{color:#fff;background:var(--acc)}
+main{padding:12px 12px 20px;max-width:1300px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.tile b{display:block;font-size:26px;font-weight:800;line-height:1.1}
+.tile span{color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.tile.k b{color:var(--ok)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
+.card h2{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-weight:800}
+.card p.help{color:var(--mute);font-size:13px;margin-top:6px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;white-space:nowrap}
-th{color:var(--mute);font-weight:600;font-size:12px}
-tr.row{cursor:pointer}tr.row:hover td{background:#1d2130}
-.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;white-space:nowrap}
+th{color:var(--mute);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+tr.row{cursor:pointer}tr.row:active td,tr.row:hover td{background:#1d2130}
+.pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
 .SEM_SITE{background:#123d2a;color:var(--ok)}.SITE_QUEBRADO{background:#3d2f12;color:var(--warn)}.SITE_ANTIGO{background:#12303d;color:var(--info)}.SITE_OK{background:#22252e;color:var(--mute)}
 .st{background:#252a3a;color:#c9cfe3}
-.thumb{width:36px;height:64px;object-fit:cover;object-position:top;border-radius:4px;background:#000;border:1px solid var(--line)}
+.thumb{width:34px;height:60px;object-fit:cover;object-position:top;border-radius:5px;background:#000;border:1px solid var(--line)}
 .filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
-.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 10px;border-radius:999px;cursor:pointer;font-weight:600;font-size:12px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px;border-radius:999px;cursor:pointer;font-weight:700;font-size:13px}
 .chip.on{border-color:var(--acc);background:#23204a}
-input,select{background:#0f1115;border:1px solid var(--line);color:var(--ink);padding:7px 9px;border-radius:8px;font:inherit}
-.btn{background:var(--acc);color:#fff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px}
-.btn.sec{background:#2a2f3d}.btn.ok{background:#1f7a4a}.btn.warn{background:#7a5a1f}.btn.bad{background:#7a2a2a}
-.btn:disabled{opacity:.5;cursor:default}
-.drawer{position:fixed;top:0;right:0;width:min(560px,100%);height:100%;background:var(--card);border-left:1px solid var(--line);box-shadow:-10px 0 40px rgba(0,0,0,.5);transform:translateX(105%);transition:transform .2s;overflow:auto;z-index:10;padding:16px}
-.drawer.on{transform:none}
-.drawer h3{font-size:18px;margin-bottom:2px}
-.kv{display:grid;grid-template-columns:120px 1fr;gap:4px 10px;font-size:13px;margin:10px 0}
-.kv div:nth-child(odd){color:var(--mute)}
-.kv a{color:var(--info)}
-pre{white-space:pre-wrap;background:#0f1115;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px/1.45 ui-monospace,Consolas,monospace;max-height:320px;overflow:auto}
+input,select,textarea{background:#0f1115;border:1px solid var(--line);color:var(--ink);padding:11px 12px;border-radius:10px;font:inherit;font-size:16px;width:100%}
+textarea{font:13px/1.45 ui-monospace,Consolas,monospace;min-height:340px}
+label.f{display:block;font-size:12px;color:var(--mute);font-weight:700;margin:8px 0 4px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.form .w{grid-column:1/-1}
+.btn{background:var(--acc);color:#fff;border:0;padding:11px 14px;border-radius:10px;cursor:pointer;font-weight:800;font-size:14px;display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn.sec{background:#2a2f3d}.btn.ok{background:#1f7a4a}.btn.warn{background:#7a5a1f}.btn.bad{background:#7a2a2a}.btn.sm{padding:7px 10px;font-size:13px}
+.btn:disabled{opacity:.5}
 .actions{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
-.shot{width:100%;max-width:260px;border:1px solid var(--line);border-radius:8px;display:block}
-.gal{display:flex;gap:6px;flex-wrap:wrap}.gal img{height:70px;border-radius:6px;border:1px solid var(--line)}
+.drawer{position:fixed;top:0;right:0;width:min(600px,100%);height:100%;background:var(--card);border-left:1px solid var(--line);box-shadow:-10px 0 40px rgba(0,0,0,.5);transform:translateX(105%);transition:transform .2s;overflow:auto;z-index:20;padding:16px 16px 90px}
+.drawer.on{transform:none}
+.drawer h3{font-size:20px;margin-bottom:2px;padding-right:40px}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:5px 10px;font-size:13px;margin:10px 0}
+.kv div:nth-child(odd){color:var(--mute)}
+pre{white-space:pre-wrap;background:#0f1115;border:1px solid var(--line);border-radius:10px;padding:12px;font:13px/1.5 ui-monospace,Consolas,monospace;max-height:300px;overflow:auto}
+.shot{width:100%;max-width:240px;border:1px solid var(--line);border-radius:10px;display:block}
+.gal{display:flex;gap:6px;flex-wrap:wrap}.gal img{height:72px;border-radius:6px;border:1px solid var(--line)}
 .muted{color:var(--mute)}
-.log{font:12px/1.4 ui-monospace,Consolas,monospace;background:#0f1115;border:1px solid var(--line);border-radius:8px;padding:8px;max-height:260px;overflow:auto;white-space:pre-wrap}
+.log{font:12px/1.45 ui-monospace,Consolas,monospace;background:#0f1115;border:1px solid var(--line);border-radius:10px;padding:10px;max-height:280px;overflow:auto;white-space:pre-wrap}
 .good{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
-.form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.close{position:absolute;top:10px;right:12px;background:none;border:0;color:var(--mute);font-size:22px;cursor:pointer}
-@media(max-width:700px){th:nth-child(n+6),td:nth-child(n+6){display:none}.kv{grid-template-columns:1fr}}
+.close{position:absolute;top:8px;right:10px;background:#2a2f3d;border:0;color:#fff;font-size:22px;cursor:pointer;width:38px;height:38px;border-radius:10px}
+.check{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:#0f1115;cursor:pointer;font-size:16px}
+.check.on{background:#1f7a4a;border-color:#1f7a4a;color:#fff}
+.check.ro{cursor:default;opacity:.85}
+.qr{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.qr canvas{background:#fff;padding:8px;border-radius:10px}
+.toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#23262f;border:1px solid var(--line);color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;z-index:30;display:none}
+.bar{height:8px;border-radius:99px;background:#252a3a;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc)}
+iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12px;background:#fff}
+.two{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:900px){
+  nav.top{display:flex}nav.bottom{display:none}body{padding-bottom:20px}
+  .two{grid-template-columns:1fr 1fr}
+  .form{grid-template-columns:repeat(3,1fr)}
+  th:nth-child(n),td:nth-child(n){white-space:nowrap}
+}
+@media(max-width:899px){
+  .hide-m{display:none}
+}
 </style>
 </head>
 <body>
 <header>
   <h1>leadpipe</h1>
-  <nav>
-    <button data-tab="painel" class="on">Painel</button>
-    <button data-tab="leads">Leads</button>
-    <button data-tab="fila">Fila de hoje</button>
-    <button data-tab="rodar">Rodar</button>
-  </nav>
-  <span class="muted" id="clock"></span>
+  <nav class="top" id="navtop"></nav>
+  <span class="sp"></span>
+  <span class="muted" id="status" style="font-size:12px"></span>
 </header>
+
 <main>
-  <section id="tab-painel">
-    <div class="grid" id="tiles"></div>
-    <div class="card"><h2>Qualificação por cidade</h2><div id="region"></div></div>
-    <div class="card"><h2>Conversão por lead</h2><div id="funnel"></div></div>
-    <div class="card"><h2>Resposta por canal e por toque</h2><div id="channels"></div></div>
-  </section>
+<!-- ===================== PAINEL ===================== -->
+<section id="tab-painel">
+  <div class="grid" id="tiles"></div>
+  <div class="card"><h2>Funil</h2><div id="funnelbars"></div></div>
+  <div class="two">
+    <div class="card"><h2>Qualificação por cidade</h2><div class="scroll" id="region"></div></div>
+    <div class="card"><h2>Resposta por canal e por toque</h2><div class="scroll" id="channels"></div></div>
+  </div>
+  <div class="card"><h2>Acesso pelo celular</h2><div id="public"></div></div>
+</section>
 
-  <section id="tab-leads" hidden>
-    <div class="filters">
-      <span class="muted">Site:</span>
-      <button class="chip on" data-site="">todos</button>
-      <button class="chip" data-site="SEM_SITE">SEM SITE</button>
-      <button class="chip" data-site="SITE_QUEBRADO">quebrado</button>
-      <button class="chip" data-site="SITE_ANTIGO">antigo</button>
-      <button class="chip" data-site="SITE_OK">ok (descartado)</button>
-      <span class="muted" style="margin-left:10px">Etapa:</span>
-      <select id="fstatus"><option value="">todas</option>
-        <option>NOVO</option><option>QUALIFICADO</option><option>ENRIQUECIDO</option><option>HERO_PRONTO</option><option>ENVIADO</option><option>RESPONDEU</option><option>CALL_AGENDADA</option><option>FECHADO</option><option>PERDIDO</option><option>DESCARTADO</option></select>
-      <input id="fq" placeholder="buscar nome / cidade / telefone" style="min-width:220px">
-      <span class="muted" id="lcount"></span>
-    </div>
-    <div class="card" style="padding:0"><table id="ltable"><thead><tr><th></th><th>id</th><th>nome</th><th>cidade</th><th>site</th><th>etapa</th><th>telefone</th><th>nota</th><th>email</th><th>fotos</th><th>hero</th><th>motivo</th></tr></thead><tbody></tbody></table></div>
-  </section>
+<!-- ===================== LEADS ===================== -->
+<section id="tab-leads" hidden>
+  <div class="filters">
+    <button class="chip on" data-site="">todos</button>
+    <button class="chip" data-site="SEM_SITE">SEM SITE</button>
+    <button class="chip" data-site="SITE_QUEBRADO">quebrado</button>
+    <button class="chip" data-site="SITE_ANTIGO">antigo</button>
+    <button class="chip" data-site="SITE_OK">descartado</button>
+    <select id="fstatus" style="width:auto"><option value="">todas as etapas</option>
+      <option>NOVO</option><option>QUALIFICADO</option><option>ENRIQUECIDO</option><option>HERO_PRONTO</option><option>ENVIADO</option><option>RESPONDEU</option><option>CALL_AGENDADA</option><option>FECHADO</option><option>PERDIDO</option><option>DESCARTADO</option></select>
+    <select id="fsource" style="width:auto"><option value="">todas as origens</option><option value="google_maps">Google Maps</option><option value="manual">manual</option><option value="facebook">Facebook</option><option value="csv">CSV</option></select>
+    <input id="fq" placeholder="buscar nome / cidade / telefone" style="width:auto;min-width:200px;flex:1">
+    <span class="muted" id="lcount"></span>
+  </div>
+  <div class="card scroll" style="padding:0"><table id="ltable"><thead><tr><th></th><th>nome</th><th>cidade</th><th>site</th><th>etapa</th><th class="hide-m">telefone</th><th class="hide-m">nota</th><th class="hide-m">fotos</th><th>hero</th><th class="hide-m">origem</th></tr></thead><tbody></tbody></table></div>
+</section>
 
-  <section id="tab-fila" hidden>
-    <div class="card"><h2>Devidos hoje (leste → oeste)</h2><div id="queue"></div></div>
-  </section>
+<!-- ===================== NOVO LEAD ===================== -->
+<section id="tab-novo" hidden>
+  <div class="card">
+    <h2>Novo lead (Facebook, indicação, qualquer lugar)</h2>
+    <p class="help">Preencha o que tiver. Nome e telefone bastam para gerar o hero. Site vazio = SEM SITE, já qualificado.</p>
+    <div class="form" style="margin-top:8px">
+      <div class="w"><label class="f">Nome do negócio *</label><input id="n-name" placeholder="Bob's Roof Cleaning"></div>
+      <div><label class="f">Telefone</label><input id="n-phone" placeholder="(614) 555-0100" inputmode="tel"></div>
+      <div><label class="f">Vertical</label><select id="n-vertical"></select></div>
+      <div><label class="f">Cidade</label><input id="n-city" placeholder="Newark"></div>
+      <div><label class="f">Estado (UF)</label><input id="n-state" placeholder="OH" maxlength="2"></div>
+      <div><label class="f">Origem</label><select id="n-source"><option value="facebook">Facebook</option><option value="manual">manual</option><option value="instagram">Instagram</option><option value="indicacao">indicação</option></select></div>
+      <div><label class="f">Facebook (URL)</label><input id="n-facebook" placeholder="https://facebook.com/..."></div>
+      <div><label class="f">Instagram (URL)</label><input id="n-instagram"></div>
+      <div><label class="f">Email</label><input id="n-email" inputmode="email"></div>
+      <div><label class="f">Site (se tiver)</label><input id="n-website"></div>
+      <div><label class="f">Ficha do Google (URL)</label><input id="n-gbp" placeholder="opcional, puxa fotos e avaliações"></div>
+      <div><label class="f">Nota Google</label><input id="n-rating" inputmode="decimal" placeholder="4.8"></div>
+      <div><label class="f">Nº avaliações</label><input id="n-reviews" inputmode="numeric"></div>
+      <div class="w"><label class="f">Endereço</label><input id="n-address" placeholder="123 Main St, Newark, OH 43055"></div>
+      <div class="w"><label class="f">Observações</label><input id="n-notes"></div>
+      <div class="w"><label class="f">Template do hero</label><select id="n-template"></select></div>
+    </div>
+    <div class="actions">
+      <button class="btn ok" id="n-save-build">Salvar e gerar hero</button>
+      <button class="btn sec" id="n-save">Só salvar</button>
+    </div>
+    <div id="n-result"></div>
+  </div>
+</section>
 
-  <section id="tab-rodar" hidden>
-    <div class="card"><h2>0. CAÇAR QUEM NÃO TEM SITE (recomendado)</h2>
-      <div class="form">
-        <input id="h-state" value="OH" style="width:70px" placeholder="UF">
-        <select id="h-by"><option value="county">por condado (zona rural)</option><option value="city">por cidade</option></select>
-        <input id="h-vertical" placeholder="verticais separadas por vírgula (vazio = as 5)" style="min-width:320px">
-        <button class="btn ok" data-run="hunt">Caçar SEM SITE</button>
-      </div>
-      <p class="muted" style="margin-top:6px">Lê só o card do Google: quem tem botão "Website" é descartado na hora, sem clique. Cada lead já entra como SEM SITE / QUALIFICADO. Ohio inteiro por condado = 88 × 5 = 440 buscas ≈ 3–4 h; deixe rodando.</p>
+<!-- ===================== TEMPLATES ===================== -->
+<section id="tab-templates" hidden>
+  <div class="card">
+    <h2>Templates do hero</h2>
+    <p class="help">Cada template é um arquivo HTML com campos entre chaves duplas ({{ name }}, {{ phone_display }}, {{ tagline }}, {{ services }}, {{ reviews }}, {{ hero_image }}, {{ house_labels }}...). Edite, salve com um nome novo e escolha por lead ou como padrão.</p>
+    <div class="actions">
+      <select id="t-select" style="width:auto;min-width:200px"></select>
+      <button class="btn sec" id="t-load">Abrir</button>
+      <button class="btn sec" id="t-preview">Pré-visualizar</button>
+      <input id="t-name" placeholder="nome para salvar (ex: bold)" style="width:auto;min-width:200px">
+      <button class="btn ok" id="t-save">Salvar como</button>
+      <button class="btn bad" id="t-delete">Apagar</button>
     </div>
-    <div class="card"><h2>1. Buscar empresas no Google Maps (todos, com e sem site)</h2>
-      <div class="form">
-        <input id="r-vertical" value="roof cleaning" placeholder="vertical">
-        <input id="r-state" value="OH" style="width:70px" placeholder="UF">
-        <input id="r-cities" placeholder="cidades separadas por vírgula (vazio = todas do estado)" style="min-width:320px">
-        <input id="r-max" placeholder="máx por cidade (vazio = tudo)" style="width:190px">
-        <button class="btn" data-run="source">Buscar</button>
-        <button class="btn sec" data-run="pipeline" title="busca → qualifica → enriquece → gera heros, tudo de uma vez">Esteira completa</button>
-      </div>
-      <p class="muted" style="margin-top:6px">Dica: quem não tem site aparece no fim da lista do Google. Deixe "máx" vazio e use cidades menores.</p>
+    <textarea id="t-html" spellcheck="false" placeholder="abra um template para editar"></textarea>
+    <div class="actions"><span class="muted" id="t-info"></span></div>
+    <div id="t-frame"></div>
+  </div>
+</section>
+
+<!-- ===================== VÍDEOS ===================== -->
+<section id="tab-videos" hidden>
+  <div class="card">
+    <h2>Checklist por lead</h2>
+    <p class="help">Marque o vídeo quando gravar. Enviado e respondeu vêm dos toques registrados. Toque no nome para abrir o lead e o texto do email.</p>
+    <div class="scroll"><table id="vtable"><thead><tr><th>nome</th><th>hero</th><th>vídeo</th><th>enviado</th><th>respondeu</th><th>call</th><th>fechou</th><th class="hide-m">arquivo / link</th></tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<!-- ===================== FILA ===================== -->
+<section id="tab-fila" hidden>
+  <div class="card"><h2>Devidos hoje (leste → oeste)</h2><div class="scroll" id="queue"></div></div>
+</section>
+
+<!-- ===================== RODAR ===================== -->
+<section id="tab-rodar" hidden>
+  <div class="card"><h2>Caçar quem não tem site</h2>
+    <div class="form">
+      <div><label class="f">Estado</label><input id="h-state" value="OH" maxlength="2"></div>
+      <div><label class="f">Varrer por</label><select id="h-by"><option value="county">condado (zona rural)</option><option value="city">cidade</option></select></div>
+      <div><label class="f">Máx. de lugares (vazio = todos)</label><input id="h-max" inputmode="numeric" placeholder="ex: 5"></div>
+      <div class="w"><label class="f">Verticais (vírgula; vazio = as 5)</label><input id="h-vertical" placeholder="roof cleaning, pressure washing"></div>
     </div>
-    <div class="card"><h2>2. Etapas</h2>
-      <div class="actions">
-        <button class="btn" data-run="qualify">Qualificar os NOVOS</button>
-        <button class="btn sec" data-run="qualify-recheck">Reavaliar todos</button>
-        <button class="btn ok" data-run="enrich-nosite">Enriquecer só SEM SITE</button>
-        <button class="btn sec" data-run="enrich">Enriquecer todos qualificados</button>
-        <button class="btn" data-run="hero">Gerar heros</button>
-        <button class="btn sec" data-run="hero-all">Gerar heros (inclui sem foto)</button>
-      </div>
+    <div class="actions"><button class="btn ok" data-run="hunt">Caçar SEM SITE</button></div>
+    <p class="help">Lê só o card do Google e descarta quem tem site antes de clicar. Ohio inteiro = 440 buscas ≈ 3 h; comece com 3–5 lugares.</p>
+  </div>
+  <div class="card"><h2>Etapas</h2>
+    <div class="actions">
+      <button class="btn" data-run="qualify">Qualificar NOVOS</button>
+      <button class="btn ok" data-run="enrich-nosite">Enriquecer SEM SITE</button>
+      <button class="btn" data-run="hero-all">Gerar heros</button>
+      <button class="btn sec" data-run="qualify-recheck">Reavaliar todos</button>
+      <button class="btn sec" data-run="enrich">Enriquecer todos</button>
+      <button class="btn sec" data-run="expire">Expirar heros (30d)</button>
     </div>
-    <div class="card"><h2>Saída</h2><div id="jobs"></div></div>
-  </section>
+  </div>
+  <div class="card"><h2>Busca completa (com e sem site)</h2>
+    <div class="form">
+      <div><label class="f">Vertical</label><input id="r-vertical" value="roof cleaning"></div>
+      <div><label class="f">Estado</label><input id="r-state" value="OH" maxlength="2"></div>
+      <div><label class="f">Máx por cidade</label><input id="r-max" inputmode="numeric"></div>
+      <div class="w"><label class="f">Cidades (vírgula; vazio = todas)</label><input id="r-cities"></div>
+    </div>
+    <div class="actions"><button class="btn sec" data-run="source">Buscar</button><button class="btn sec" data-run="pipeline">Esteira completa</button></div>
+  </div>
+  <div class="card"><h2>Saída</h2><div id="jobs"></div></div>
+</section>
 </main>
 
+<nav class="bottom" id="navbot"></nav>
 <div class="drawer" id="drawer"><button class="close" id="dclose">×</button><div id="dbody"></div></div>
+<div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onerror="window.QRCode=null"></script>
 <script>
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-const api = (p) => fetch(p).then(r => r.json());
-const post = (b) => fetch('/api/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b)}).then(r => r.json());
+const api = p => fetch(p).then(r => r.json());
+const post = b => fetch('/api/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b)}).then(r => r.json());
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let site = '', tab = 'painel';
+const TABS = [['painel','Painel','M3 13h8V3H3v10zm10 8h8V11h-8v10zM3 21h8v-6H3v6zm10-18v6h8V3h-8z'],
+              ['leads','Leads','M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z'],
+              ['novo','Novo','M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'],
+              ['templates','Templates','M3 3h18v4H3V3zm0 6h8v12H3V9zm10 0h8v5h-8V9zm0 7h8v5h-8v-5z'],
+              ['videos','Vídeos','M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z'],
+              ['fila','Fila','M12 2a10 10 0 100 20 10 10 0 000-20zm.5 5H11v6l5.25 3.15.75-1.23-4.5-2.67V7z'],
+              ['rodar','Rodar','M8 5v14l11-7z']];
+let site = '', tab = location.hash.replace('#','') || 'painel', templates = [], verticals = [];
 
-function table(rows, cols, cls){
+function toast(m){ const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2600); }
+function table(rows, cols){
   if(!rows || !rows.length) return '<p class="muted">sem dados</p>';
   cols = cols || Object.keys(rows[0]);
   return '<table><thead><tr>' + cols.map(c=>'<th>'+esc(c)+'</th>').join('') + '</tr></thead><tbody>' +
     rows.map(r => '<tr>' + cols.map(c => { const v = r[c]; let k=''; if(/SATURADA/.test(v)) k=' class="bad"'; else if(/VIRGEM/.test(v)) k=' class="good"'; return '<td'+k+'>'+esc(v)+'</td>'; }).join('') + '</tr>').join('') + '</tbody></table>';
 }
+function nav(){
+  const mk = (t, cls) => `<button class="${tab===t[0]?'on':''}" data-tab="${t[0]}">${cls==='b'?`<svg viewBox="0 0 24 24" fill="currentColor"><path d="${t[2]}"/></svg>`:''}${t[1]}</button>`;
+  $('#navtop').innerHTML = TABS.map(t => mk(t,'t')).join(''); $('#navbot').innerHTML = TABS.map(t => mk(t,'b')).join('');
+  $$('nav button').forEach(b => b.onclick = () => go(b.dataset.tab));
+}
+function go(t){ tab = t; location.hash = t; $$('main section').forEach(s => s.hidden = s.id !== 'tab-' + t); nav(); refresh(); window.scrollTo(0,0); }
 
+// ---------- painel
 async function loadPainel(){
-  const s = await api('/api/summary');
+  const s = await api('/api/summary'); verticals = s.verticals;
+  const c = s.counts;
+  $('#tiles').innerHTML = [['SEM SITE',c.sem_site,'k'],['heros prontos',c.heros],['vídeos feitos',c.videos],['enviados',c.sent],['responderam',c.replied],['fechados',c.closed]]
+    .map(([l,v,k]) => `<div class="tile ${k||''}"><b>${v}</b><span>${l}</span></div>`).join('');
   const st = Object.fromEntries(s.status.map(r => [r.status, r.leads]));
   const order = ['NOVO','QUALIFICADO','ENRIQUECIDO','HERO_PRONTO','ENVIADO','RESPONDEU','CALL_AGENDADA','FECHADO','PERDIDO','DESCARTADO'];
-  $('#tiles').innerHTML = order.map(k => `<div class="tile"><b>${st[k]||0}</b><span>${k.replace('_',' ')}</span></div>`).join('');
+  const max = Math.max(1, ...order.map(k => st[k]||0));
+  $('#funnelbars').innerHTML = order.map(k => `<div style="display:grid;grid-template-columns:120px 1fr 44px;gap:8px;align-items:center;margin:4px 0;font-size:13px"><span class="muted">${k.replace('_',' ')}</span><div class="bar"><i style="width:${100*(st[k]||0)/max}%"></i></div><b>${st[k]||0}</b></div>`).join('');
   $('#region').innerHTML = table(s.region);
-  $('#funnel').innerHTML = table(s.funnel);
   $('#channels').innerHTML = table(s.channels) + '<br>' + table(s.touches);
+  loadPublic();
+  fillSelects();
+}
+async function loadPublic(){
+  const p = await api('/api/public');
+  const box = $('#public');
+  if(p.url){
+    box.innerHTML = `<div class="qr"><div id="qrbox"></div><div><p><b>${esc(p.url)}</b></p><p class="muted">Abra no celular ou aponte a câmera para o código. Vale enquanto esta janela do PC estiver aberta. No celular: "Adicionar à tela inicial" para virar um app.</p></div></div>`;
+    if(window.QRCode) new QRCode($('#qrbox'), {text: p.url + (location.search||''), width: 150, height: 150});
+  } else {
+    box.innerHTML = `<p class="muted">${p.status === 'off' ? 'Para acessar do celular, abra o app com <b>app.bat</b> (ou <code>lp.exe ui --public</code>). A URL e o QR aparecem aqui.' : 'túnel: ' + esc(p.status)}</p>`;
+  }
+}
+async function fillSelects(){
+  if(!templates.length){ const t = await api('/api/templates'); templates = t.templates; templates._default = t.default; }
+  const opts = templates.map(t => `<option value="${t.name}" ${t.name===templates._default?'selected':''}>${t.name} (${t.source})</option>`).join('');
+  ['#n-template','#t-select'].forEach(s => { if($(s) && !$(s).options.length) $(s).innerHTML = opts; });
+  if($('#n-vertical') && !$('#n-vertical').options.length) $('#n-vertical').innerHTML = (verticals.length?verticals:['roof cleaning']).map(v => `<option>${v}</option>`).join('');
 }
 
+// ---------- leads
 async function loadLeads(){
-  const q = new URLSearchParams({site, status: $('#fstatus').value, q: $('#fq').value});
+  const q = new URLSearchParams({site, status: $('#fstatus').value, source: $('#fsource').value, q: $('#fq').value});
   const rows = await api('/api/leads?' + q);
   $('#lcount').textContent = rows.length + ' leads';
   $('#ltable tbody').innerHTML = rows.map(r => `<tr class="row" data-id="${r.id}">
     <td>${r.screenshot_path ? `<img class="thumb" src="/shots/${r.id}.png" loading="lazy">` : ''}</td>
-    <td>${r.id}</td><td><b>${esc(r.name)}</b></td><td>${esc(r.city||'')}, ${esc(r.state||'')}</td>
+    <td><b>${esc(r.name)}</b><div class="muted" style="font-size:11px">#${r.id} · ${esc(r.vertical)}</div></td>
+    <td>${esc(r.city||'')}${r.state?', '+esc(r.state):''}</td>
     <td>${r.site_status ? `<span class="pill ${r.site_status}">${r.site_status.replace('SITE_','').replace('_',' ')}</span>` : '<span class="muted">—</span>'}</td>
     <td><span class="pill st">${r.status}</span></td>
-    <td>${esc(r.phone_e164||'')}</td><td>${r.rating ?? ''} (${r.review_count ?? 0})</td>
-    <td>${r.email ? '✓' : ''}</td><td>${r.n_images || ''}</td>
+    <td class="hide-m">${esc(r.phone_e164||'')}</td><td class="hide-m">${r.rating ?? ''}</td><td class="hide-m">${r.n_images || ''}</td>
     <td>${r.slug ? `<a href="/hero/${r.slug}/" target="_blank" onclick="event.stopPropagation()">abrir</a>` : ''}</td>
-    <td class="muted" title="${esc(r.site_reason||'')}">${esc((r.site_reason||'').slice(0,60))}</td></tr>`).join('');
+    <td class="hide-m muted">${esc(r.source||'')}</td></tr>`).join('');
   $$('#ltable tr.row').forEach(tr => tr.onclick = () => openLead(+tr.dataset.id));
 }
-
 async function openLead(id){
   const d = await api('/api/lead/' + id);
+  await fillSelects();
   const contact = {email: d.email, facebook_page: d.facebook_url || d.instagram_url, instagram: d.instagram_url, ligacao: d.phone_e164}[d.draft.channel] || '—';
+  const tplOpts = templates.map(t => `<option value="${t.name}" ${(d.hero_template||templates._default)===t.name?'selected':''}>${t.name}</option>`).join('');
   $('#dbody').innerHTML = `
-    <h3>#${d.id} ${esc(d.name)}</h3>
-    <div class="muted">${esc(d.city||'')}, ${esc(d.state||'')} · ${esc(d.vertical)} · ${d.rating ?? '—'} ★ (${d.review_count ?? 0})</div>
+    <h3>${esc(d.name)}</h3>
+    <div class="muted">#${d.id} · ${esc(d.city||'')}${d.state?', '+esc(d.state):''} · ${esc(d.vertical)} · ${d.rating ?? '—'} ★ (${d.review_count ?? 0}) · ${esc(d.source)}</div>
     <div class="actions">
       ${d.site_status ? `<span class="pill ${d.site_status}">${d.site_status}</span>` : ''} <span class="pill st">${d.status}</span>
-      ${d.slug ? `<a class="btn sec" href="/hero/${d.slug}/" target="_blank">ver hero</a>` : ''}
-      ${d.website_url ? `<a class="btn sec" href="${esc(d.website_url)}" target="_blank">site atual</a>` : ''}
-      ${d.gbp_url ? `<a class="btn sec" href="${esc(d.gbp_url)}" target="_blank">Google</a>` : ''}
+      ${d.slug ? `<a class="btn sec sm" href="/hero/${d.slug}/" target="_blank">ver hero</a>` : ''}
+      ${d.website_url ? `<a class="btn sec sm" href="${esc(d.website_url)}" target="_blank">site atual</a>` : ''}
+      ${d.gbp_url ? `<a class="btn sec sm" href="${esc(d.gbp_url)}" target="_blank">Google</a>` : ''}
+      ${d.facebook_url ? `<a class="btn sec sm" href="${esc(d.facebook_url)}" target="_blank">Facebook</a>` : ''}
+    </div>
+    <div class="card" style="background:var(--card2)"><h2>Gerar</h2>
+      <div class="actions" style="margin:0">
+        <select id="d-template" style="width:auto">${tplOpts}</select>
+        <button class="btn ok sm" onclick="runLead('lead-full', ${d.id})">Enriquecer + gerar hero</button>
+        <button class="btn sec sm" onclick="runLead('lead-hero', ${d.id})">Só regerar hero</button>
+      </div>
+      <div id="d-job" class="muted" style="margin-top:6px;font-size:12px"></div>
     </div>
     <div class="kv">
       <div>telefone</div><div>${esc(d.phone_e164||'—')}</div>
       <div>email</div><div>${esc(d.email||'—')} <span class="muted">${d.email_source ? `(${d.email_source}, ${d.email_confidence})` : ''}</span></div>
-      <div>facebook</div><div>${d.facebook_url ? `<a href="${esc(d.facebook_url)}" target="_blank">${esc(d.facebook_url)}</a>` : '—'}</div>
       <div>instagram</div><div>${d.instagram_url ? `<a href="${esc(d.instagram_url)}" target="_blank">${esc(d.instagram_url)}</a>` : '—'}</div>
       <div>endereço</div><div>${esc(d.address_full||'—')}</div>
       <div>fuso</div><div>${esc(d.timezone||'—')}</div>
       <div>motivo</div><div>${esc(d.site_reason||'—')}</div>
-      <div>hero</div><div>${d.hero_url ? esc(d.hero_url) + ` <span class="muted">(expira ${d.hero_expires_at})</span>` : '—'}</div>
+      <div>vídeo</div><div>${d.video_done_at ? '✅ gravado' : '⬜ não gravado'} ${d.video_url ? `· <a href="${esc(d.video_url)}" target="_blank">link</a>` : ''} ${d.video_path ? `· <a href="/videos/${esc(d.video_path.split(/[\\\\/]/).pop())}" target="_blank">arquivo</a>` : ''}</div>
+      <div>observações</div><div>${esc(d.notes||'—')}</div>
     </div>
     ${d.screenshot_path ? `<div class="muted">site atual no celular:</div><img class="shot" src="/shots/${d.id}.png">` : ''}
     ${d.images.length ? `<div class="muted" style="margin-top:8px">fotos:</div><div class="gal">${d.images.map(i => `<img src="/img/${d.id}/${i.path.split(/[\\\\/]/).pop()}" title="${i.kind}">`).join('')}</div>` : ''}
-    <h2 style="margin-top:14px;font-size:13px;color:var(--mute)">PRÓXIMO TOQUE: ${d.next_touch} · ${d.draft.channel} · contato: ${esc(contact)}</h2>
+    <h2 style="margin-top:14px;font-size:12px;color:var(--mute);text-transform:uppercase">Próximo toque: ${d.next_touch} · ${d.draft.channel} · contato: ${esc(contact)}</h2>
     ${d.draft.subject ? `<div><b>Assunto:</b> ${esc(d.draft.subject)}</div>` : ''}
     <pre id="draft">${esc(d.draft.body)}</pre>
     <div class="actions">
-      <button class="btn sec" onclick="navigator.clipboard.writeText(document.getElementById('draft').innerText)">copiar texto</button>
-      <button class="btn ok" onclick="act({op:'touch', lead_id:${d.id}, n:${d.next_touch}, channel:'${d.draft.channel}'})">marcar toque ${d.next_touch} enviado</button>
-      <button class="btn" onclick="act({op:'reply', lead_id:${d.id}})">respondeu</button>
-      <button class="btn warn" onclick="act({op:'status', lead_id:${d.id}, status:'CALL_AGENDADA'})">call agendada</button>
-      <button class="btn ok" onclick="act({op:'status', lead_id:${d.id}, status:'FECHADO'})">fechado</button>
-      <button class="btn bad" onclick="act({op:'status', lead_id:${d.id}, status:'PERDIDO'})">perdido</button>
-      <button class="btn bad" onclick="act({op:'status', lead_id:${d.id}, status:'DESCARTADO'})">descartar</button>
+      <button class="btn sec sm" onclick="navigator.clipboard.writeText(document.getElementById('draft').innerText).then(()=>toast('copiado'))">copiar texto</button>
+      <button class="btn ok sm" onclick="act({op:'touch', lead_id:${d.id}, n:${d.next_touch}, channel:'${d.draft.channel}'})">marcar toque ${d.next_touch} enviado</button>
+      <button class="btn sm" onclick="act({op:'reply', lead_id:${d.id}})">respondeu</button>
+      <button class="btn warn sm" onclick="act({op:'status', lead_id:${d.id}, status:'CALL_AGENDADA'})">call agendada</button>
+      <button class="btn ok sm" onclick="act({op:'status', lead_id:${d.id}, status:'FECHADO'})">fechado</button>
+      <button class="btn bad sm" onclick="act({op:'status', lead_id:${d.id}, status:'PERDIDO'})">perdido</button>
+      <button class="btn bad sm" onclick="act({op:'status', lead_id:${d.id}, status:'DESCARTADO'})">descartar</button>
     </div>
-    <div class="form"><input id="setfield" placeholder="campo (email, facebook_url, notes...)" style="width:200px"><input id="setvalue" placeholder="valor" style="min-width:220px"><button class="btn sec" onclick="act({op:'set', lead_id:${d.id}, field:$('#setfield').value, value:$('#setvalue').value})">salvar</button></div>
-    <h2 style="margin-top:14px;font-size:13px;color:var(--mute)">HISTÓRICO</h2>
-    ${table(d.history)}
-    ${d.touches.length ? table(d.touches) : ''}
-    ${d.checks.length ? '<h2 style="margin-top:14px;font-size:13px;color:var(--mute)">CHECAGENS DO SITE</h2>' + table(d.checks) : ''}`;
+    <div class="form"><div><label class="f">campo</label><select id="setfield"><option>email</option><option>phone_e164</option><option>facebook_url</option><option>instagram_url</option><option>website_url</option><option>city</option><option>state</option><option>notes</option><option>video_url</option></select></div><div><label class="f">valor</label><input id="setvalue"></div><div style="align-self:end"><button class="btn sec" onclick="act({op:'set', lead_id:${d.id}, field:$('#setfield').value, value:$('#setvalue').value})">salvar campo</button></div></div>
+    <h2 style="margin-top:14px;font-size:12px;color:var(--mute);text-transform:uppercase">Histórico</h2>
+    <div class="scroll">${table(d.history)}</div>
+    ${d.touches.length ? '<div class="scroll">' + table(d.touches) + '</div>' : ''}`;
   $('#drawer').classList.add('on');
   window._lead = id;
 }
-
+async function runLead(what, id){
+  const r = await post({op:'run', what, lead_id:id, template: $('#d-template') ? $('#d-template').value : ''});
+  if(r.error){ toast(r.error); return; }
+  $('#d-job').textContent = 'rodando... acompanhe em Rodar → Saída';
+  toast('iniciado');
+  pollJobs(() => { if(window._lead === id) openLead(id); loadLeads(); });
+}
 async function act(b){
   const r = await post(b);
-  if(r.error){ alert(r.error); return; }
+  if(r.error){ toast(r.error); return; }
+  toast('ok');
   if(window._lead) openLead(window._lead);
-  loadLeads(); loadQueue(); loadPainel();
+  refresh();
 }
 
+// ---------- novo lead
+function novoBody(){
+  return {op:'create_lead', name:$('#n-name').value, phone:$('#n-phone').value, vertical:$('#n-vertical').value, city:$('#n-city').value,
+    state:$('#n-state').value.toUpperCase(), source:$('#n-source').value, facebook:$('#n-facebook').value, instagram:$('#n-instagram').value,
+    email:$('#n-email').value, website:$('#n-website').value, gbp_url:$('#n-gbp').value, rating:$('#n-rating').value, reviews:$('#n-reviews').value,
+    address:$('#n-address').value, notes:$('#n-notes').value};
+}
+async function saveNovo(build){
+  const r = await post(novoBody());
+  if(r.error){ toast(r.error); return; }
+  $('#n-result').innerHTML = `<p class="good">lead #${r.lead_id} ${r.created ? 'criado' : 'já existia (campos vazios preenchidos)'}.</p>`;
+  if(build){
+    const j = await post({op:'run', what:'lead-full', lead_id:r.lead_id, template:$('#n-template').value});
+    if(j.error) toast(j.error); else { toast('gerando hero…'); pollJobs(() => { $('#n-result').innerHTML += `<p>hero pronto: <a href="#" onclick="openLead(${r.lead_id});return false">abrir lead #${r.lead_id}</a></p>`; }); }
+  }
+  ['#n-name','#n-phone','#n-city','#n-facebook','#n-instagram','#n-email','#n-website','#n-gbp','#n-rating','#n-reviews','#n-address','#n-notes'].forEach(s => $(s).value = '');
+}
+
+// ---------- templates
+async function loadTemplates(){
+  const t = await api('/api/templates'); templates = t.templates; templates._default = t.default;
+  $('#t-select').innerHTML = templates.map(x => `<option value="${x.name}">${x.name} (${x.source})</option>`).join('');
+  $('#t-info').textContent = 'padrão: ' + t.default + ' · seus templates ficam em data/templates';
+}
+async function tLoad(){
+  const name = $('#t-select').value; const r = await api('/api/templates?name=' + encodeURIComponent(name));
+  if(r.error){ toast(r.error); return; }
+  $('#t-html').value = r.html; $('#t-name').value = name === 'classic' ? '' : name; $('#t-info').textContent = 'editando: ' + name + (name==='classic' ? ' (o padrão não é sobrescrito: salve com outro nome)' : '');
+}
+async function tSave(){
+  const name = ($('#t-name').value || '').trim();
+  if(!name || !$('#t-html').value){ toast('dê um nome e abra um template'); return; }
+  const r = await post({op:'save_template', name, html:$('#t-html').value});
+  if(r.error){ toast(r.error); return; }
+  toast('salvo: ' + name); templates = []; await loadTemplates(); $('#t-select').value = name.toLowerCase().replace(/[^a-z0-9_-]/g,'');
+}
+async function tPreview(){
+  const name = $('#t-name').value.trim() || $('#t-select').value;
+  if($('#t-html').value && $('#t-name').value.trim()) await tSave();
+  const r = await post({op:'preview', template:name});
+  if(r.error){ toast(r.error); return; }
+  $('#t-frame').innerHTML = `<p class="muted" style="margin:8px 0">pré-visualização com o lead #${r.lead_id} · <a href="${r.url}" target="_blank">abrir em nova aba</a></p><iframe class="prev" src="${r.url}"></iframe>`;
+}
+async function tDelete(){
+  const name = $('#t-select').value; if(name === 'classic'){ toast('o padrão não pode ser apagado'); return; }
+  if(!confirm('apagar template ' + name + '?')) return;
+  const r = await post({op:'delete_template', name}); if(r.error){ toast(r.error); return; } templates = []; await loadTemplates(); $('#t-html').value = '';
+}
+
+// ---------- vídeos
+async function loadVideos(){
+  const rows = await api('/api/checklist');
+  const ck = (on, ro) => `<span class="check ${on?'on':''} ${ro?'ro':''}">${on?'✓':''}</span>`;
+  $('#vtable tbody').innerHTML = rows.length ? rows.map(r => `<tr>
+    <td><a href="#" onclick="openLead(${r.id});return false"><b>${esc(r.name)}</b></a><div class="muted" style="font-size:11px">${esc(r.city||'')}${r.state?', '+esc(r.state):''} · <a href="/hero/${r.slug}/" target="_blank">hero</a></div></td>
+    <td>${ck(true,true)}</td>
+    <td><span class="check ${r.video?'on':''}" onclick="toggleVideo(${r.id}, ${!r.video})">${r.video?'✓':''}</span></td>
+    <td>${r.sent ? ck(true,true) : `<button class="btn sec sm" onclick="act({op:'touch', lead_id:${r.id}, n:1, channel:'email'})">enviei</button>`}</td>
+    <td>${r.replied ? ck(true,true) : `<button class="btn sec sm" onclick="act({op:'reply', lead_id:${r.id}})">respondeu</button>`}</td>
+    <td>${r.call ? ck(true,true) : `<button class="btn sec sm" onclick="act({op:'status', lead_id:${r.id}, status:'CALL_AGENDADA'})">call</button>`}</td>
+    <td>${r.closed ? ck(true,true) : `<button class="btn ok sm" onclick="act({op:'status', lead_id:${r.id}, status:'FECHADO'})">fechou</button>`}</td>
+    <td class="hide-m"><input type="file" accept="video/*" style="width:190px;padding:4px;font-size:12px" onchange="uploadVideo(${r.id}, this)"> ${r.video_path ? `<a href="/videos/${esc(r.video_path.split(/[\\\\/]/).pop())}" target="_blank">ver</a>` : ''} <input placeholder="ou link do vídeo" value="${esc(r.video_url||'')}" style="width:170px;padding:6px;font-size:12px" onchange="act({op:'video', lead_id:${r.id}, url:this.value})"></td>
+  </tr>`).join('') : '<tr><td colspan="8" class="muted">nenhum hero gerado ainda. Gere em Rodar ou pelo lead.</td></tr>';
+}
+async function toggleVideo(id, done){ await post({op:'video', lead_id:id, done}); loadVideos(); loadPainel(); }
+async function uploadVideo(id, input){
+  const f = input.files[0]; if(!f) return; toast('enviando ' + f.name + '…');
+  const ext = f.name.split('.').pop();
+  const r = await fetch('/api/video/' + id, {method:'POST', headers:{'X-File-Ext': ext}, body: f}).then(r => r.json());
+  if(r.error) toast(r.error); else { toast('vídeo salvo'); loadVideos(); }
+}
+
+// ---------- fila
 async function loadQueue(){
   const rows = await api('/api/queue');
-  if(!rows.length){ $('#queue').innerHTML = '<p class="muted">ninguém devido hoje. Gere heros (Rodar → Gerar heros) para entrarem na fila do toque 1.</p>'; return; }
+  if(!rows.length){ $('#queue').innerHTML = '<p class="muted">ninguém devido hoje. Gere heros para entrarem na fila do toque 1.</p>'; return; }
   const contact = i => ({email: i.email, facebook_page: i.facebook_url || i.instagram_url, instagram: i.instagram_url, ligacao: i.phone}[i.channel] || '—');
-  $('#queue').innerHTML = '<table><thead><tr><th>id</th><th>nome</th><th>cidade</th><th>hora local</th><th>toque</th><th>canal</th><th>contato</th><th>atraso</th><th></th></tr></thead><tbody>' +
-    rows.map(i => `<tr class="row" data-id="${i.lead_id}"><td>${i.lead_id}</td><td><b>${esc(i.name)}</b></td><td>${esc(i.city)}, ${esc(i.state)}</td><td>${i.local_now} <span class="muted">${i.tz.split('/').pop()}</span></td><td>${i.touch_number}</td><td>${i.channel}</td><td>${esc(contact(i))}</td><td>${i.days_overdue>0 ? i.days_overdue+'d' : ''}</td>
-      <td><button class="btn ok" onclick="event.stopPropagation();act({op:'touch', lead_id:${i.lead_id}, n:${i.touch_number}, channel:'${i.channel}'})">enviado</button></td></tr>`).join('') + '</tbody></table>';
+  $('#queue').innerHTML = '<table><thead><tr><th>nome</th><th>hora local</th><th>toque</th><th>canal</th><th>contato</th><th></th></tr></thead><tbody>' +
+    rows.map(i => `<tr class="row" data-id="${i.lead_id}"><td><b>${esc(i.name)}</b><div class="muted" style="font-size:11px">${esc(i.city)}, ${esc(i.state)}${i.days_overdue>0 ? ' · atraso ' + i.days_overdue + 'd' : ''}</div></td><td>${i.local_now} <span class="muted">${i.tz.split('/').pop()}</span></td><td>${i.touch_number}</td><td>${i.channel}</td><td>${esc(contact(i))}</td>
+      <td><button class="btn ok sm" onclick="event.stopPropagation();act({op:'touch', lead_id:${i.lead_id}, n:${i.touch_number}, channel:'${i.channel}'})">enviado</button></td></tr>`).join('') + '</tbody></table>';
   $$('#queue tr.row').forEach(tr => tr.onclick = () => openLead(+tr.dataset.id));
 }
 
+// ---------- rodar
+let _pollT = null;
 async function loadJobs(){
   const jobs = await api('/api/jobs');
   $('#jobs').innerHTML = jobs.length ? jobs.map(j => `<div style="margin-bottom:10px"><b>${esc(j.cmd)}</b> <span class="${j.status==='ok'?'good':j.status==='rodando'?'warn':'bad'}">${j.status}</span><div class="log">${esc(j.log.slice(-6000))}</div></div>`).join('') : '<p class="muted">nada rodando</p>';
-  if(jobs.some(j => j.status === 'rodando')) setTimeout(loadJobs, 2000); else { loadPainel(); loadLeads(); }
+  $('#status').textContent = jobs.some(j => j.status === 'rodando') ? '● rodando' : '';
+  return jobs;
 }
-
-$$('nav button').forEach(b => b.onclick = () => { tab = b.dataset.tab; $$('nav button').forEach(x => x.classList.toggle('on', x === b)); $$('main section').forEach(s => s.hidden = s.id !== 'tab-' + tab); refresh(); });
-$$('.chip[data-site]').forEach(c => c.onclick = () => { site = c.dataset.site; $$('.chip[data-site]').forEach(x => x.classList.toggle('on', x === c)); loadLeads(); });
-$('#fstatus').onchange = loadLeads; $('#fq').oninput = () => { clearTimeout(window._t); window._t = setTimeout(loadLeads, 250); };
-$('#dclose').onclick = () => { $('#drawer').classList.remove('on'); window._lead = null; };
+function pollJobs(done){
+  clearTimeout(_pollT);
+  (async function tick(){ const jobs = await loadJobs(); if(jobs.some(j => j.status === 'rodando')) _pollT = setTimeout(tick, 2500); else { if(done) done(); loadPainel(); } })();
+}
 $$('[data-run]').forEach(b => b.onclick = async () => {
-  const hunt = b.dataset.run === 'hunt';
-  const body = hunt ? {op:'run', what:'hunt', state:$('#h-state').value, by:$('#h-by').value, vertical:$('#h-vertical').value}
-                    : {op:'run', what:b.dataset.run, vertical:$('#r-vertical').value, state:$('#r-state').value, cities:$('#r-cities').value, max_results:$('#r-max').value};
-  const r = await post(body); if(r.error) alert(r.error); loadJobs();
+  const w = b.dataset.run;
+  const body = w === 'hunt' ? {op:'run', what:'hunt', state:$('#h-state').value, by:$('#h-by').value, vertical:$('#h-vertical').value, max_places:$('#h-max').value}
+             : {op:'run', what:w, vertical:$('#r-vertical').value, state:$('#r-state').value, cities:$('#r-cities').value, max_results:$('#r-max').value};
+  const r = await post(body); if(r.error){ toast(r.error); return; } toast('iniciado'); pollJobs();
 });
-function refresh(){ ({painel: loadPainel, leads: loadLeads, fila: loadQueue, rodar: loadJobs})[tab](); }
-setInterval(() => $('#clock').textContent = new Date().toLocaleTimeString(), 1000);
-refresh();
+
+// ---------- wiring
+$$('.chip[data-site]').forEach(c => c.onclick = () => { site = c.dataset.site; $$('.chip[data-site]').forEach(x => x.classList.toggle('on', x === c)); loadLeads(); });
+$('#fstatus').onchange = loadLeads; $('#fsource').onchange = loadLeads; $('#fq').oninput = () => { clearTimeout(window._t); window._t = setTimeout(loadLeads, 250); };
+$('#dclose').onclick = () => { $('#drawer').classList.remove('on'); window._lead = null; };
+$('#n-save').onclick = () => saveNovo(false); $('#n-save-build').onclick = () => saveNovo(true);
+$('#t-load').onclick = tLoad; $('#t-save').onclick = tSave; $('#t-preview').onclick = tPreview; $('#t-delete').onclick = tDelete;
+function refresh(){ ({painel: loadPainel, leads: loadLeads, novo: fillSelects, templates: loadTemplates, videos: loadVideos, fila: loadQueue, rodar: loadJobs})[tab](); }
+window.addEventListener("hashchange", () => { const t = location.hash.replace("#",""); if(t && t !== tab) go(t); });
+nav(); go(tab); loadJobs();
 </script>
 </body>
 </html>

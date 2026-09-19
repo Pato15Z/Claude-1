@@ -48,16 +48,23 @@ lp source add --name "Bob's Roof Cleaning" --vertical "roof cleaning" --phone "6
 lp source import-csv leads.csv --vertical "roof cleaning"     # colunas: name, phone, address, city, state, website, rating, reviews, facebook, instagram, email
 ```
 
-## O jeito visual (recomendado)
+## O aplicativo (recomendado)
 
-```bash
-lp.exe ui          # abre http://127.0.0.1:8090 no navegador
-```
+Dois cliques em **`app.bat`** (Windows): abre o painel no navegador e imprime
+uma URL pública para usar no celular (túnel Cloudflare, vale enquanto a janela
+estiver aberta). `app-local.bat` abre só neste computador. Terminal:
+`lp.exe ui` ou `lp.exe ui --public`. Senha: defina `LEADPIPE_UI_TOKEN`.
 
-Abas: **Painel** (contagens, % por cidade), **Leads** (filtro SEM SITE / quebrado /
-antigo, miniatura do site, gaveta com rascunho do próximo toque e botões
-"enviado", "respondeu", "fechado"), **Fila de hoje**, **Rodar** (botões para
-buscar no Maps, qualificar, enriquecer só SEM SITE, gerar heros).
+No celular, "Adicionar à tela inicial" transforma a página em app.
+
+Abas: **Painel** (números, funil, % por cidade, QR para o celular), **Leads**
+(filtros, miniatura do site, gaveta com rascunho do email, botões de etapa,
+gerar hero com o template escolhido), **Novo** (lead manual: Facebook,
+indicação; salva e já gera o hero), **Templates** (abrir, editar, salvar com
+outro nome, pré-visualizar com um lead real; seus templates ficam em
+`data/templates`), **Vídeos** (checklist por lead: hero, vídeo, enviado,
+respondeu, call, fechou; upload do arquivo ou link), **Fila** (devidos hoje),
+**Rodar** (caçar sem site, etapas, saída dos comandos).
 
 Esteira inteira em um comando (busca → qualifica → enriquece → heros, focado
 em quem não tem site):
@@ -75,6 +82,8 @@ lp qualify run                    # NOVO → QUALIFICADO / DESCARTADO (≈0.3–
 lp report region                  # <25% qualificação = região saturada; >40% = virgem
 lp enrich run                     # QUALIFICADO → ENRIQUECIDO (email, FB/IG, 3–6 fotos, logo, paleta)
 lp hero build                     # ENRIQUECIDO → HERO_PRONTO (uma pasta por lead em data/hero_site/)
+lp hero one --id 123 --template classic   # um lead do início ao fim (enriquece, gera, tira foto)
+lp hero templates                 # lista templates; lp hero shot 123 → preview.png / preview_desktop.png
 lp hero serve                     # abre em http://localhost:8080/<slug>/ para gravar o vídeo
 lp hero deploy                    # publica na Vercel (uma vez: npm i -g vercel && vercel login)
 
@@ -119,6 +128,11 @@ que o dono vê no celular.
   contraste WCAG AA; fallback fixo por vertical.
 - **Hero**: HTML estático de uma página (Jinja2), mobile-first. Passa no mesmo
   teste de render que reprova o site do lead (há um teste garantindo isso).
+- **Casa com etiquetas**: imagem fixa de referência (`leadpipe/hero/assets/house.webp`)
+  com os serviços da vertical apontando para telhado, calhas, janelas etc., na cor
+  do negócio. Celular: bolinhas numeradas + legenda; desktop: etiquetas completas.
+- **Templates**: `leadpipe/hero/templates/*.html` (pacote) e `data/templates/*.html`
+  (seus, têm prioridade). Jinja2; campos em `hero.json` de cada hero.
 - **Deploy**: `data/hero_site/` é um site só; `vercel.json` roteia
   `{slug}.dominio` → `/{slug}/`. Cloudflare Pages: `functions/_middleware.js`
   faz o mesmo.
