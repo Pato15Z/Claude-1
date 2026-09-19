@@ -60,14 +60,14 @@ def content_for(vertical: str, city: str | None) -> dict:
 import re as _re
 
 ANCHORS = {
-    "roof":     [(0.50, 0.13), (0.30, 0.20), (0.74, 0.22)],
-    "gutter":   [(0.17, 0.31), (0.87, 0.31), (0.60, 0.53)],
-    "window":   [(0.47, 0.42), (0.75, 0.45), (0.24, 0.70)],
-    "siding":   [(0.19, 0.58), (0.90, 0.60)],
-    "driveway": [(0.72, 0.94)],
-    "door":     [(0.44, 0.76)],
-    "garage":   [(0.73, 0.78)],
-    "yard":     [(0.12, 0.88), (0.30, 0.92)],
+    "roof":     [(0.44, 0.09), (0.19, 0.22), (0.83, 0.19)],
+    "gutter":   [(0.14, 0.35), (0.90, 0.36), (0.63, 0.54)],
+    "window":   [(0.38, 0.44), (0.79, 0.47), (0.22, 0.70)],
+    "siding":   [(0.16, 0.57), (0.92, 0.62)],
+    "driveway": [(0.70, 0.93)],
+    "door":     [(0.45, 0.78)],
+    "garage":   [(0.76, 0.80)],
+    "yard":     [(0.10, 0.88), (0.34, 0.93)],
 }
 _KEYS = [
     ("roof", _re.compile(r"roof|shingle|moss|algae|streak|soft ?wash", _re.I)),
@@ -94,5 +94,5 @@ def place_labels(services: list[str], max_labels: int = 6) -> list[dict]:
             break
         used.add(pt)
         x, y = pt
-        out.append({"text": svc, "x": round(x * 100, 1), "y": round(y * 100, 1), "side": "left" if x < 0.5 else "right"})
+        out.append({"n": len(out) + 1, "text": svc, "x": round(x * 100, 1), "y": round(y * 100, 1), "side": "left" if x < 0.5 else "right"})
     return out
