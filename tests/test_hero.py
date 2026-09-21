@@ -1,5 +1,6 @@
 import asyncio
 from datetime import date, timedelta
+import json
 from pathlib import Path
 
 from leadpipe import config, db
@@ -50,7 +51,8 @@ def test_build_and_slug_dedup(con, monkeypatch):
     assert html.count('href="tel:+16145550101"') >= 4   # topo, hero, final, barra fixa
     assert html.count("<article>") == 3 and "Eileen A" in html and ">X<" not in html   # 3 melhores, curtas fora
     assert "maps?q=39.96,-82.99" in html and "Get directions" in html
-    assert (Path(la["hero_path"]) / "img" / "house.webp").exists() and html.count('class="lbl"') == 4
+    assert (Path(la["hero_path"]) / "img" / "scene.webp").exists() and html.count('class="lbl"') == 4
+    assert 'class="chip"' in html and 'class="cardx"' not in html   # casa: chips + etiquetas, sem cards
     assert (Path(la["hero_path"]) / "img" / "before.jpg").exists() and (Path(la["hero_path"]) / "hero.json").exists()
     assert (config.HERO_SITE_DIR / "vercel.json").exists()
     r2 = build(con, include_low_priority=True)
@@ -127,3 +129,40 @@ def test_user_template_override(con, monkeypatch, tmp_path):
     assert r["built"] == 1
     html = Path(db.get_lead(con, a)["hero_path"], "index.html").read_text()
     assert "<h1>Tpl Co</h1>" in html and "classic" not in template_source("meu")
+
+
+def test_styles_detect_cards_and_overrides(con, monkeypatch, tmp_path):
+    from leadpipe.hero import styles
+    from leadpipe.hero.styles import detect_style, resolve_opts, import_folder
+    monkeypatch.setattr(config, "HERO_SITE_DIR", config.DATA_DIR / "hero_site")
+    monkeypatch.setattr(styles, "USER_STYLES_DIR", tmp_path / "styles")
+    assert detect_style("pressure washing", "Pressure washing service", "Green Lawn LLC") == "house"   # a vertical decide
+    assert detect_style(None, "Moving company", "Two Guys") == "movers" and detect_style("tree service") == "tree"
+    assert detect_style("gutter cleaning") == "gutter" and detect_style("carpet cleaning") == "carpet"
+    # importação por nome de arquivo (Handyman1.png, Car Detailing3.jpg...)
+    from PIL import Image
+    src = tmp_path / "imgs"; src.mkdir()
+    for n in ("Handyman1.png", "Car Detailing3.jpg", "Movers9.png", "notes.txt"):
+        if n.endswith(".txt"):
+            (src / n).write_text("x")
+        else:
+            Image.new("RGB", (2000, 900), (200, 40, 40)).save(src / n)
+    got = dict(import_folder(src))
+    assert got == {"Handyman1.png": "handyman", "Car Detailing3.jpg": "detailing", "Movers9.png": "movers"}
+    im = Image.open(tmp_path / "styles" / "movers.webp"); assert im.width == 1600
+    # movers: imagem + cards; handyman: imagem sem cards; override por lead desliga cards e mapa
+    m = _enriched(con, "Two Guys Moving", "614-555-0201"); db.update_lead(con, m, vertical="moving")
+    h = _enriched(con, "Joe Handyman", "614-555-0202"); db.update_lead(con, h, vertical="handyman")
+    r = build(con, lead_ids=[m, h], include_low_priority=True)
+    assert r["built"] == 2 and r["errors"] == 0
+    hm = Path(db.get_lead(con, m)["hero_path"], "index.html").read_text()
+    hh = Path(db.get_lead(con, h)["hero_path"], "index.html").read_text()
+    assert hm.count('class="cardx"') == 4 and "img/scene.webp" in hm and 'class="lbl"' not in hm and "Local moves" in hm
+    assert 'class="cardx"' not in hh and 'class="chip"' in hh and "img/scene.webp" in hh
+    r = build(con, lead_ids=[m], include_low_priority=True, opts={"show_cards": False, "show_map": False})
+    hm = Path(db.get_lead(con, m)["hero_path"], "index.html").read_text()
+    assert 'class="cardx"' not in hm and 'class="map"' not in hm and json.loads(db.get_lead(con, m)["hero_opts"])["show_map"] is False
+    r = build(con, lead_ids=[h], include_low_priority=True, style="pest")
+    hh = Path(db.get_lead(con, h)["hero_path"], "index.html").read_text()
+    assert db.get_lead(con, h)["hero_style"] == "pest" and "Termite treatment" in hh and hh.count('class="cardx"') == 4
+    assert resolve_opts("house", '{"show_cards": true}')["show_cards"] is True

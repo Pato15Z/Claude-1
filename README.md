@@ -57,14 +57,53 @@ estiver aberta). `app-local.bat` abre só neste computador. Terminal:
 
 No celular, "Adicionar à tela inicial" transforma a página em app.
 
-Abas: **Painel** (números, funil, % por cidade, QR para o celular), **Leads**
-(filtros, miniatura do site, gaveta com rascunho do email, botões de etapa,
-gerar hero com o template escolhido), **Novo** (lead manual: Facebook,
-indicação; salva e já gera o hero), **Templates** (abrir, editar, salvar com
-outro nome, pré-visualizar com um lead real; seus templates ficam em
-`data/templates`), **Vídeos** (checklist por lead: hero, vídeo, enviado,
-respondeu, call, fechou; upload do arquivo ou link), **Fila** (devidos hoje),
-**Rodar** (caçar sem site, etapas, saída dos comandos).
+Abas: **Painel** (números, funil, QR para o celular, configurações: seu
+nome, telefone e link padrão do vídeo), **Buscar leads** (caçar sem site por
+estado, etapas, backup, apagar leads fora dos EUA), **Leads** (filtros,
+seleção múltipla, gerar site dos selecionados com template e estilo, gaveta
+com estilo por lead, textos prontos dos 4 toques, botões de etapa),
+**Adicionar** (lead manual: Facebook, indicação), **Checklist** (sites
+gerados: vídeo, email, Facebook, Instagram, follow-up, respondeu, fechou;
+estilo do site e "regerar" por linha; upload do vídeo), **Follow-up**
+(devidos hoje com o texto pronto), **Fechados** (clientes: setup, mensal,
+Wise/Stripe, setup pago, churn), **Modelos** (templates HTML e as imagens
+por tipo de negócio).
+
+## Estilo por tipo de negócio
+
+Cada lead recebe a imagem de referência do seu tipo e, nos tipos marcados,
+**cards de serviço** com descrição:
+
+| Estilo | Imagem + cards | Só imagem |
+|---|---|---|
+| movers, landscaping, detailing, pest, gutter | ✓ | |
+| handyman, tree, carpet | | ✓ |
+| house (roof, pressure, window, house cleaning) | casa com etiquetas apontando telhado, calhas, janelas | |
+
+O tipo é detectado pela vertical (depois categoria do Google e nome); fixe
+por lead na gaveta ou no Checklist, e ligue/desligue cards, imagem, fotos,
+avaliações e mapa. Suas imagens: `lp style import "D:\MPBS\IMGS TEMP"`
+(o nome do arquivo diz o estilo: Handyman1.png, Movers9.png...) ou envie em
+Modelos → Imagens por tipo. Ficam em `data/styles/`.
+
+```bash
+lp style list
+lp style set 123 movers --no-cards --no-map     # fixa estilo, desliga seções, regera
+lp hero batch --ids 1,2,3 --style auto
+```
+
+## Prospecção por vídeo (4 toques)
+
+| # | Dia | Canal | Texto |
+|---|---|---|---|
+| 1 | 0 | email | curto, link do vídeo + página |
+| 2 | 2 | DM Facebook | vídeo + "mandei email" |
+| 3 | 3 | DM Instagram | vídeo + página |
+| 4 | 6 | email follow-up | "derrubo semana que vem" |
+
+Toque cujo canal o lead não tem é pulado. Checkmarks por canal no
+Checklist; o vídeo usado é o do lead (link ou arquivo) ou o padrão das
+Configurações. SMS fora de escopo.
 
 Esteira inteira em um comando (busca → qualifica → enriquece → heros, focado
 em quem não tem site):
@@ -93,7 +132,7 @@ lp touch draft --today --sender-name "Seu Nome" --sender-phone "+1..." --video-u
 lp touch log 123 --n 1 --channel email
 lp touch reply 123                # → RESPONDEU
 lp lead set-status 123 CALL_AGENDADA
-lp client add 123                 # → FECHADO, entra no churn
+lp client add 123 --provider wise  # → FECHADO, entra na aba Fechados
 lp hero expire                    # derruba heros com 30 dias sem resposta
 lp report all                     # ou: lp report html && abrir data/report.html
 ```

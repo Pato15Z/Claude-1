@@ -25,6 +25,27 @@ cara de reverter.
 4. Escolher email/FB/IG de envio e colocar seu nome/telefone/link do vídeo em
    `lp touch draft` (ou editar `leadpipe/tracking/templates.py`).
 
+## 0.0 Geo-fence (por que apareceram leads do Brasil)
+
+O Google Maps localiza a busca pelo IP e pela geolocalização do navegador,
+não pelo texto. "roof cleaning in Newark, OH" vindo de um IP brasileiro
+devolvia também empresas perto de você. Quatro camadas agora: geolocalização
+forçada no centro do estado, `gl=us`, âncora `@lat,lng,9z` na URL, e filtro
+final por caixa do estado + telefone válido dos EUA (o que falhar conta como
+"fora dos EUA" e não entra). `lp db purge-foreign` faz backup e apaga o que
+já entrou errado.
+
+## 0.2 Estilo por negócio, toques por vídeo, fechados
+
+- Estilo = imagem de referência + cards on/off, detectado por palavra-chave
+  (vertical → categoria → nome), fixável por lead com seções ligáveis
+  (`hero_style`, `hero_opts`). Estilo fixado à mão também troca o texto
+  (um "pressure washing" que é mudança vira movers).
+- Sequência: email (vídeo) d0 → FB d2 → IG d3 → follow-up d6; canal ausente
+  é pulado; âncora = primeiro toque enviado.
+- `clients` ganhou provider (wise/stripe), setup_paid_at, last_paid_at;
+  FECHADO cria a linha sozinho.
+
 ## 0.1 Acesso pelo celular (como funciona e limites)
 
 O app roda no seu PC. `app.bat` abre um túnel Cloudflare gratuito ("quick

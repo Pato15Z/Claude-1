@@ -48,6 +48,20 @@ def log_reply(con: sqlite3.Connection, lead_id: int, touch_number: int | None = 
     return touch_number
 
 
+def has_channel(lead, channel: str) -> bool:
+    """O lead tem como receber este canal? (sem Facebook → toque do Facebook é pulado)"""
+    return {"email": bool(lead["email"]), "facebook_page": bool(lead["facebook_url"]),
+            "instagram": bool(lead["instagram_url"]), "ligacao": bool(lead["phone_e164"])}.get(channel, True)
+
+
+def next_touch(lead, done: set[int]) -> int | None:
+    """Próximo toque ainda não feito cujo canal o lead tem. None = sequência esgotada."""
+    for n in sorted(config.TOUCH_SCHEDULE):
+        if n not in done and has_channel(lead, config.TOUCH_SCHEDULE[n]["channel"]):
+            return n
+    return None
+
+
 @dataclass
 class QueueItem:
     lead_id: int
@@ -96,17 +110,14 @@ def daily_queue(con: sqlite3.Connection, today: date | None = None, include_futu
         if any(t["replied_at"] for t in touches):
             continue
         done = {t["touch_number"] for t in touches}
-        nxt = max(done) + 1 if done else 1
-        if nxt > 4:
+        nxt = next_touch(lead, done)
+        if nxt is None:
             continue
-        if nxt == 1:
+        first = min((t["sent_at"] for t in touches if t["sent_at"]), default=None)
+        if first is None:
             due = today_local
         else:
-            t1 = next((t for t in touches if t["touch_number"] == 1), None)
-            if t1 is None:
-                due = today_local
-            else:
-                due = _local(t1["sent_at"], tz).date() + timedelta(days=config.TOUCH_SCHEDULE[nxt]["day"])
+            due = _local(first, tz).date() + timedelta(days=config.TOUCH_SCHEDULE[nxt]["day"])
         if due > today_local + timedelta(days=include_future_days):
             continue
         offset = local_now.utcoffset() or timedelta(0)

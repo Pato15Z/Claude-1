@@ -23,6 +23,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from .. import config, db
 from ..normalize import slug as make_slug
 from .content import content_for, place_labels
+from .styles import DEFAULT_STYLE, STYLES, detect_style, resolve_opts, style_image
 
 PKG_TEMPLATES = Path(__file__).parent / "templates"
 ASSETS = Path(__file__).parent / "assets"
@@ -105,7 +106,11 @@ def hero_data(con: sqlite3.Connection, lead: sqlite3.Row, site_dir: Path) -> dic
     if not pal:
         from ..enrich.palette import build_palette
         pal = build_palette(lead["vertical"], None, [])
-    c = content_for(lead["vertical"], lead["city"])
+    # estilo por tipo de negócio (fixado no lead ou detectado) + seções ligadas/desligadas
+    forced = lead["hero_style"] in STYLES
+    style = lead["hero_style"] if forced else detect_style(lead["vertical"], lead["category"], lead["name"])
+    opts = resolve_opts(style, lead["hero_opts"])
+    c = content_for(lead["vertical"], lead["city"], style, force_style=forced)
     # 3 melhores avaliações: 5 estrelas primeiro, depois as mais longas (até 260 chars)
     revs = con.execute("SELECT author, rating, date_text, text FROM lead_reviews WHERE lead_id=? AND text IS NOT NULL AND length(text) > 15", (lead["id"],)).fetchall()
     revs = sorted((dict(r) for r in revs), key=lambda r: (-(r["rating"] or 0), -min(len(r["text"]), 260)))[:3]
@@ -131,7 +136,8 @@ def hero_data(con: sqlite3.Connection, lead: sqlite3.Row, site_dir: Path) -> dic
         "stars": round(lead["rating"] or 0), "reviews": revs,
         "map_embed": map_embed, "map_link": lead["gbp_url"] or (f"https://www.google.com/maps/search/{quote_plus(map_q, safe=',')}" if map_q else None),
         "service_area": lead["city"] or "",
-        "tagline": c["tagline"], "sub": c["sub"], "services": c["services"], "cta": c["cta"],
+        "tagline": c["tagline"], "sub": c["sub"], "services": c["services"], "cards": c["cards"], "cta": c["cta"],
+        "style": style, "style_label": STYLES[style]["label"], "opts": opts,
         "hero_image": copy(hero_img, "hero") if hero_img else None,
         "before": copy(before, "before") if before else None,
         "after": copy(after, "after") if after else None,
@@ -141,12 +147,16 @@ def hero_data(con: sqlite3.Connection, lead: sqlite3.Row, site_dir: Path) -> dic
         "year": datetime.now().year,
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=config.HERO_TTL_DAYS)).date().isoformat(),
     }
-    # casa com etiquetas de serviço (imagem fixa de referência + cor do negócio)
-    house_src = ASSETS / "house.webp"
-    if house_src.exists():
-        shutil.copy2(house_src, img_out / "house.webp")
-        data["house_image"] = "img/house.webp"
-        data["house_labels"] = place_labels(c["services"])
+    # imagem de referência do estilo (sua, em data/styles, ou a do pacote). No
+    # estilo "casa" ela recebe as etiquetas de serviço na cor do negócio.
+    scene_src = style_image(style)
+    if scene_src is not None and opts["show_scene"]:
+        dst = img_out / f"scene{scene_src.suffix}"
+        shutil.copy2(scene_src, dst)
+        data["scene_image"] = f"img/{dst.name}"
+        if style == DEFAULT_STYLE:
+            data["house_image"] = data["scene_image"]   # nome antigo, para templates seus
+            data["house_labels"] = place_labels(c["services"])
     data["template"] = lead["hero_template"] or config.HERO_TEMPLATE_DEFAULT
     (out / "hero.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
     return data
@@ -189,7 +199,7 @@ def write_site_scaffold(site_dir: Path, domain: str) -> None:
 
 def build(con: sqlite3.Connection, limit: int | None = None, include_low_priority: bool = False, rebuild: bool = False,
           progress=None, site_status: str | None = None, lead_id: int | None = None, template: str | None = None,
-          lead_ids: list[int] | None = None) -> dict:
+          lead_ids: list[int] | None = None, style: str | None = None, opts: dict | None = None) -> dict:
     site_dir = config.HERO_SITE_DIR
     write_site_scaffold(site_dir, config.HERO_DOMAIN)
     # ids explícitos: qualquer lead vivo (regerar hero de quem já foi contatado não mexe no funil)
@@ -213,8 +223,15 @@ def build(con: sqlite3.Connection, limit: int | None = None, include_low_priorit
     t0 = time.time(); built = 0; errors = 0; urls = []
     for lead in leads:
         try:
+            fix = {}
             if template:
-                db.update_lead(con, lead["id"], hero_template=template)
+                fix["hero_template"] = template
+            if style is not None:
+                fix["hero_style"] = style if style in STYLES else None   # "auto" → volta a detectar
+            if opts is not None:
+                fix["hero_opts"] = json.dumps(opts) if opts else None
+            if fix:
+                db.update_lead(con, lead["id"], **fix)
                 lead = db.get_lead(con, lead["id"])
             data = hero_data(con, lead, site_dir)
             html = render(data)

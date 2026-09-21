@@ -150,6 +150,12 @@ CREATE TABLE IF NOT EXISTS clients (
     notes       TEXT
 );
 
+-- Configurações da interface (seu nome, telefone, link do vídeo...).
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+);
+
 -- Avaliações do Google (módulo 3), usadas no hero.
 CREATE TABLE IF NOT EXISTS lead_reviews (
     id          INTEGER PRIMARY KEY,
@@ -199,7 +205,9 @@ _NEW_COLUMNS = {
     "source_queries": [("with_site", "INTEGER")],
     "leads": [("slug", "TEXT"), ("palette_json", "TEXT"), ("logo_path", "TEXT"), ("enriched_at", "TEXT"),
               ("enrich_notes", "TEXT"), ("hero_built_at", "TEXT"), ("hero_path", "TEXT"),
-              ("hero_template", "TEXT"), ("video_url", "TEXT"), ("video_path", "TEXT"), ("video_done_at", "TEXT")],
+              ("hero_template", "TEXT"), ("video_url", "TEXT"), ("video_path", "TEXT"), ("video_done_at", "TEXT"),
+              ("hero_style", "TEXT"), ("hero_opts", "TEXT")],
+    "clients": [("provider", "TEXT"), ("setup_paid_at", "TEXT"), ("last_paid_at", "TEXT"), ("paid_until", "TEXT")],
 }
 
 
@@ -335,5 +343,31 @@ LEAD_COLUMNS = {
     "sourced_at", "status", "site_status", "site_reason", "site_checked_at", "screenshot_path",
     "priority", "hero_url", "hero_expires_at", "notes", "created_at", "updated_at",
     "slug", "palette_json", "logo_path", "enriched_at", "enrich_notes", "hero_built_at", "hero_path",
-    "hero_template", "video_url", "video_path", "video_done_at",
+    "hero_template", "video_url", "video_path", "video_done_at", "hero_style", "hero_opts",
 }
+
+
+# ---------------------------------------------------------------- settings / clients
+
+def get_settings(con: sqlite3.Connection) -> dict:
+    return {r["key"]: r["value"] for r in con.execute("SELECT key, value FROM settings")}
+
+
+def set_settings(con: sqlite3.Connection, values: dict) -> None:
+    for k, v in values.items():
+        con.execute("INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (str(k), None if v is None else str(v)))
+
+
+def ensure_client(con: sqlite3.Connection, lead_id: int, setup_fee: float = 1000, mrr: float = 99,
+                  started: str | None = None, provider: str | None = None) -> int:
+    """Cria a linha em clients (se não existir) e move o lead para FECHADO."""
+    row = con.execute("SELECT id FROM clients WHERE lead_id=?", (lead_id,)).fetchone()
+    if row is None:
+        cur = con.execute("INSERT INTO clients (lead_id, started_at, setup_fee, mrr, provider) VALUES (?,?,?,?,?)",
+                          (lead_id, started or now_iso(), setup_fee, mrr, provider))
+        cid = int(cur.lastrowid)
+    else:
+        cid = int(row["id"])
+    transition(con, lead_id, "FECHADO", note="fechado")
+    return cid

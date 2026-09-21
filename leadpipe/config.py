@@ -128,11 +128,13 @@ VIDEOS_DIR = DATA_DIR / "videos"
 
 # ------------------------------------------------------------- sequência
 # Dia relativo ao toque 1 em que cada toque vence, e canal de cada um.
+# Vídeo primeiro: email com o vídeo → DM no Facebook → DM no Instagram → email de follow-up.
+# Toque cujo canal o lead não tem (sem Facebook, por exemplo) é pulado na fila.
 TOUCH_SCHEDULE = {
-    1: {"day": 0, "channel": "email"},
-    2: {"day": 3, "channel": "facebook_page"},
-    3: {"day": 5, "channel": "ligacao"},
-    4: {"day": 8, "channel": "email"},
+    1: {"day": 0, "channel": "email", "label": "email"},
+    2: {"day": 2, "channel": "facebook_page", "label": "Facebook"},
+    3: {"day": 3, "channel": "instagram", "label": "Instagram"},
+    4: {"day": 6, "channel": "email", "label": "follow-up"},
 }
 SEND_LOCAL_HOUR = 6  # toque 1 e 4 vão às 6h no fuso do lead
 

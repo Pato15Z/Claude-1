@@ -26,17 +26,25 @@ def test_queue_and_touches(con):
     assert [i.lead_id for i in q] == [east, west]  # leste antes de oeste
     assert all(i.touch_number == 1 and i.channel == "email" for i in q)
 
+    # sem Facebook nem Instagram: depois do email só resta o follow-up (toque 4, dia 6)
     d0 = datetime.now(timezone.utc) - timedelta(days=3)
     log_touch(con, east, 1, "email", template="t1", sent_at=d0.isoformat())
     assert db.get_lead(con, east)["status"] == "ENVIADO"
     q = {i.lead_id: i for i in daily_queue(con)}
-    assert q[east].touch_number == 2 and q[east].channel == "facebook_page"
-    assert q[east].days_overdue == 0
+    assert east not in q
+    assert daily_queue(con, include_future_days=3)[0].touch_number == 4
+
+    # com Facebook: toque 2 devido no dia 2 (já atrasado 1 dia)
+    db.update_lead(con, east, facebook_url="https://facebook.com/east", instagram_url="https://instagram.com/east")
+    q = {i.lead_id: i for i in daily_queue(con)}
+    assert q[east].touch_number == 2 and q[east].channel == "facebook_page" and q[east].days_overdue == 1
 
     log_touch(con, east, 2, "facebook_page")
     q = {i.lead_id: i for i in daily_queue(con)}
-    assert east not in q  # toque 3 só no dia 5
-    assert daily_queue(con, include_future_days=2)[0].lead_id in (east, west)
+    assert q[east].touch_number == 3 and q[east].channel == "instagram"   # dia 3 = hoje
+    log_touch(con, east, 3, "instagram")
+    assert east not in {i.lead_id for i in daily_queue(con)}              # follow-up só no dia 6
+    assert daily_queue(con, include_future_days=3)[0].lead_id in (east, west)
 
     log_reply(con, east)
     assert db.get_lead(con, east)["status"] == "RESPONDEU"
@@ -44,9 +52,9 @@ def test_queue_and_touches(con):
 
     cols, rows = reports.response_by_channel(con)
     by = {r[0]: r for r in rows}
-    assert by["facebook_page"][2] == 1 and by["email"][2] == 0
+    assert by["instagram"][2] == 1 and by["email"][2] == 0 and by["facebook_page"][2] == 0
     cols, rows = reports.response_by_touch(con)
-    assert rows[1][0] == 2 and rows[1][4] == "100.0%"
+    assert rows[2][0] == 3 and rows[2][4] == "100.0%"
 
 
 def test_funnel_and_region_reports(con):

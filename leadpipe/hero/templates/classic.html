@@ -62,7 +62,14 @@ section h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:va
 .rv .dt{font-size:12px;color:var(--mute);margin-left:auto;white-space:nowrap}
 .rv p{font-size:14px;color:#334155;line-height:1.5}
 .rv .g{margin-top:8px;font-size:11px;color:var(--mute);font-weight:700}
+.cards{display:grid;grid-template-columns:1fr;gap:10px;text-align:left}
+.cardx{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.cardx .ic{width:34px;height:34px;border-radius:10px;background:var(--p);color:var(--tp);font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;font-size:15px}
+.cardx h3{font-size:16px;margin-bottom:3px;line-height:1.25}
+.cardx p{font-size:14px;color:#475569;line-height:1.45}
 .house{padding:14px 0 6px}
+.house .scene.free{aspect-ratio:auto}
+.house .scene.free img{height:auto}
 .house .scene{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:1344/752;background:#dbe4ee}
 .house .scene img{width:100%;height:100%;object-fit:cover;display:block}
 .lbl{position:absolute;display:flex;align-items:center;gap:6px;transform:translateY(-50%);white-space:nowrap}
@@ -94,6 +101,7 @@ footer{padding:18px 16px 24px;text-align:center;font-size:12px;color:var(--mute)
   .map .frame{aspect-ratio:21/9}
   .trust{max-width:640px}
   .reviews h2,.map h2,.work h2,.house h2{text-align:center}
+  .cards{grid-template-columns:1fr 1fr}
   .lbl span{display:block}
   .lbl i{width:18px;height:18px;font-size:0}
   .legend{display:none}
@@ -103,6 +111,7 @@ footer{padding:18px 16px 24px;text-align:center;font-size:12px;color:var(--mute)
 </style>
 </head>
 <body>
+{% set o = opts if opts is defined else {} %}
 <header><div class="wrap">
   <div class="brand">
     {% if logo %}<img src="{{ logo }}" alt="{{ name }} logo">{% endif %}
@@ -122,7 +131,7 @@ footer{padding:18px 16px 24px;text-align:center;font-size:12px;color:var(--mute)
   </div></div>
 </section>
 
-{% if before or after or gallery %}
+{% if o.get("show_gallery", true) and (before or after or gallery) %}
 <section class="work"><div class="wrap" style="padding:0"><div class="strip" aria-label="Our work">
   {% if before %}<figure><img src="{{ before }}" alt="Before"><figcaption>Before</figcaption></figure>{% endif %}
   {% if after %}<figure><img src="{{ after }}" alt="After"><figcaption>After</figcaption></figure>{% endif %}
@@ -130,9 +139,32 @@ footer{padding:18px 16px 24px;text-align:center;font-size:12px;color:var(--mute)
 </div></div></section>
 {% endif %}
 
+{% if scene_image and o.get("show_scene", true) %}
+<section class="house"><div class="wrap">
+  {% if house_labels %}
+  <h2>What we do for your home</h2>
+  <div class="scene">
+    <img src="{{ scene_image }}" alt="Services for your home">
+    {% for l in house_labels %}
+      {% if l.side == "right" %}<div class="lbl" style="top:{{ l.y }}%;right:{{ 100 - l.x }}%"><span>{{ l.text }}</span><i>{{ l.n }}</i></div>
+      {% else %}<div class="lbl" style="top:{{ l.y }}%;left:{{ l.x }}%"><i>{{ l.n }}</i><span>{{ l.text }}</span></div>{% endif %}
+    {% endfor %}
+  </div>
+  <ol class="legend">{% for l in house_labels %}<li><b>{{ l.n }}</b>{{ l.text }}</li>{% endfor %}</ol>
+  {% else %}
+  <h2 style="text-align:center">What we do</h2>
+  <div class="scene free"><img src="{{ scene_image }}" alt="{{ vertical_title }} in {{ city }}"></div>
+  {% endif %}
+</div></section>
+{% endif %}
+
 <section class="services"><div class="wrap">
   <h2>Services</h2>
+  {% if o.get("show_cards", false) and cards %}
+  <div class="cards">{% for c in cards %}<article class="cardx"><div class="ic">{{ loop.index }}</div><div><h3>{{ c.title }}</h3><p>{{ c.desc }}</p></div></article>{% endfor %}</div>
+  {% else %}
   <div class="chips">{% for s in services %}<span class="chip">{{ s }}</span>{% endfor %}</div>
+  {% endif %}
 </div></section>
 
 <div class="wrap"><section class="trust">
@@ -141,7 +173,7 @@ footer{padding:18px 16px 24px;text-align:center;font-size:12px;color:var(--mute)
   <div><b>Free</b>estimates</div>
 </section></div>
 
-{% if reviews %}
+{% if reviews and o.get("show_reviews", true) %}
 <section class="reviews"><div class="wrap">
   <h2>What customers say</h2>
   <div class="rv">
@@ -156,21 +188,7 @@ footer{padding:18px 16px 24px;text-align:center;font-size:12px;color:var(--mute)
 </div></section>
 {% endif %}
 
-{% if house_image and house_labels %}
-<section class="house"><div class="wrap">
-  <h2>What we do for your home</h2>
-  <div class="scene">
-    <img src="{{ house_image }}" alt="Services for your home">
-    {% for l in house_labels %}
-      {% if l.side == "right" %}<div class="lbl" style="top:{{ l.y }}%;right:{{ 100 - l.x }}%"><span>{{ l.text }}</span><i>{{ l.n }}</i></div>
-      {% else %}<div class="lbl" style="top:{{ l.y }}%;left:{{ l.x }}%"><i>{{ l.n }}</i><span>{{ l.text }}</span></div>{% endif %}
-    {% endfor %}
-  </div>
-  <ol class="legend">{% for l in house_labels %}<li><b>{{ l.n }}</b>{{ l.text }}</li>{% endfor %}</ol>
-</div></section>
-{% endif %}
-
-{% if map_embed %}
+{% if map_embed and o.get("show_map", true) %}
 <section class="map"><div class="wrap">
   <h2>Location</h2>
   <div class="frame"><iframe src="{{ map_embed }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Map of {{ name }}"></iframe></div>

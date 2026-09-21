@@ -30,8 +30,10 @@ report_app = typer.Typer(no_args_is_help=True, help="Módulo 5: relatórios")
 db_app = typer.Typer(no_args_is_help=True, help="Banco")
 enrich_app = typer.Typer(no_args_is_help=True, help="Módulo 3: enriquecimento (email, redes, imagens, paleta)")
 hero_app = typer.Typer(no_args_is_help=True, help="Módulo 4: gerar e publicar heros")
+style_app = typer.Typer(no_args_is_help=True, help="Estilo visual por tipo de negócio (imagens suas, cards)")
 for name, sub in [("source", source_app), ("qualify", qualify_app), ("enrich", enrich_app), ("hero", hero_app),
-                  ("lead", lead_app), ("touch", touch_app), ("client", client_app), ("report", report_app), ("db", db_app)]:
+                  ("style", style_app), ("lead", lead_app), ("touch", touch_app), ("client", client_app),
+                  ("report", report_app), ("db", db_app)]:
     app.add_typer(sub, name=name)
 
 con_ = Console()
@@ -283,11 +285,10 @@ def touch_reply(lead_id: int, n: Optional[int] = typer.Option(None, "--n"), note
 # ============================================================== client
 
 @client_app.command("add")
-def client_add(lead_id: int, setup_fee: float = 1000, mrr: float = 99, started: Optional[str] = None):
+def client_add(lead_id: int, setup_fee: float = 1000, mrr: float = 99, started: Optional[str] = None,
+               provider: Optional[str] = typer.Option(None, help="wise | stripe | outro")):
     con = _con()
-    con.execute("INSERT INTO clients (lead_id, started_at, setup_fee, mrr) VALUES (?,?,?,?)",
-                (lead_id, started or db.now_iso(), setup_fee, mrr))
-    db.transition(con, lead_id, "FECHADO", note="client add")
+    db.ensure_client(con, lead_id, setup_fee=setup_fee, mrr=mrr, started=started, provider=provider)
     con_.print("ok")
 
 
@@ -472,6 +473,7 @@ def hero_build(
     only: Optional[str] = typer.Option(None, help="só leads com este site_status, ex: SEM_SITE"),
     id: Optional[int] = typer.Option(None, "--id", help="só este lead (regenera)"),
     template: Optional[str] = typer.Option(None, help="nome do template (lp hero templates)"),
+    style: Optional[str] = typer.Option(None, help="estilo visual (lp style list) ou 'auto'"),
 ):
     """Gera os heros em batch em data/hero_site/{slug}/ e marca HERO_PRONTO."""
     from .hero.build import build
@@ -484,7 +486,7 @@ def hero_build(
         con_.print(f"  #{lead['id']:<5} {'🖼' if has_img else '▫'} {url}")
 
     r = build(con, limit=limit, include_low_priority=include_low or id is not None, rebuild=rebuild or id is not None, progress=progress,
-              site_status=only.upper() if only else None, lead_id=id, template=template)
+              site_status=only.upper() if only else None, lead_id=id, template=template, style=style)
     if not r:
         con_.print("nada a gerar (nenhum lead ENRIQUECIDO com prioridade normal; use --include-low)"); return
     con_.print(f"[bold]{r['built']} heros em {r['_elapsed_s']}s → {r['site_dir']}  (erros: {r['errors']})[/bold]")
@@ -524,7 +526,8 @@ def hero_expire(dry_run: bool = typer.Option(False, help="só lista")):
 
 
 @hero_app.command("one")
-def hero_one(id: int = typer.Option(..., "--id"), template: Optional[str] = None, no_gbp: bool = False):
+def hero_one(id: int = typer.Option(..., "--id"), template: Optional[str] = None, no_gbp: bool = False,
+             style: Optional[str] = typer.Option(None, help="estilo visual (lp style list) ou 'auto'")):
     """Um lead do início ao fim: enriquece (se ainda não), gera o hero e tira a foto."""
     from .enrich.runner import run as enrich_run_
     from .hero.build import build
@@ -540,7 +543,7 @@ def hero_one(id: int = typer.Option(..., "--id"), template: Optional[str] = None
         con_.print("enriquecendo...")
         asyncio.run(enrich_run_(con, lead_id=id, redo=True, gbp=not no_gbp, web_search=config.ENRICH_WEB_SEARCH,
                                 progress=lambda l, r: con_.print(f"  {r}")))
-    r = build(con, include_low_priority=True, rebuild=True, lead_id=id, template=template,
+    r = build(con, include_low_priority=True, rebuild=True, lead_id=id, template=template, style=style,
               progress=lambda l, u, img: con_.print(f"  {'🖼' if img else '▫'} {u}"))
     if r.get("built"):
         hero_shot(id)
@@ -550,7 +553,8 @@ def hero_one(id: int = typer.Option(..., "--id"), template: Optional[str] = None
 @hero_app.command("batch")
 def hero_batch(ids: Optional[str] = typer.Option(None, help="ids separados por vírgula"),
                all_no_site: bool = typer.Option(False, help="todos os SEM SITE ainda sem hero"),
-               template: Optional[str] = None, no_gbp: bool = False):
+               template: Optional[str] = None, no_gbp: bool = False,
+               style: Optional[str] = typer.Option(None, help="estilo visual (lp style list) ou 'auto'")):
     """Gera o site de vários leads: busca fotos/avaliações de quem ainda não tem, depois gera todos."""
     from .enrich.runner import run as enrich_run_
     from .hero.build import build
@@ -572,9 +576,52 @@ def hero_batch(ids: Optional[str] = typer.Option(None, help="ids separados por v
         asyncio.run(enrich_run_(con, redo=True, gbp=not no_gbp, web_search=config.ENRICH_WEB_SEARCH, lead_ids=need,
                                 progress=lambda l, r: con_.print(f"  #{l['id']} {l['name'][:35]}: fotos={r.get('images', 0)} email={'sim' if r.get('email') else 'não'}")))
     con_.rule(f"2/2 gerando {len(id_list)} sites")
-    r = build(con, include_low_priority=True, rebuild=True, lead_ids=id_list, template=template,
+    r = build(con, include_low_priority=True, rebuild=True, lead_ids=id_list, template=template, style=style,
               progress=lambda l, u, img: con_.print(f"  #{l['id']} {'com foto' if img else 'sem foto'}  {l['name'][:35]}"))
     con_.print(f"[bold]{r.get('built', 0)} sites gerados. Veja na aba Leads (ver site ↗) ou Checklist.[/bold]")
+
+
+@style_app.command("list")
+def style_list():
+    """Estilos disponíveis, se têm imagem e se mostram cards por padrão."""
+    from .hero.styles import list_styles
+    _print_table("estilos", ["estilo", "nome", "cards", "imagem"],
+                 [[x["key"], x["label"], "sim" if x["cards"] else "não", ("sua" if x["user_image"] else "pacote") if x["has_image"] else "FALTA"] for x in list_styles()])
+
+
+@style_app.command("import")
+def style_import(folder: Path = typer.Argument(..., help='pasta com Handyman1.png, Landscaping2.jpg, "Car Detailing3.png"...')):
+    """Importa suas imagens: o nome do arquivo diz o estilo. Converte para webp em data/styles/."""
+    from .hero.styles import import_folder
+    if not folder.is_dir():
+        con_.print(f"[red]pasta não existe: {folder}[/red]"); raise typer.Exit(1)
+    got = import_folder(folder)
+    for name, key in got:
+        con_.print(f"  {name:<30} → {key or '[yellow]não reconheci (renomeie com o estilo no nome)[/yellow]'}")
+    con_.print(f"[bold]{sum(1 for _, k in got if k)} imagens importadas para data/styles/[/bold]")
+
+
+@style_app.command("set")
+def style_set(lead_id: int, style: str = typer.Argument("auto", help="estilo ou auto"),
+              cards: Optional[bool] = typer.Option(None, "--cards/--no-cards"),
+              scene: Optional[bool] = typer.Option(None, "--image/--no-image"),
+              reviews: Optional[bool] = typer.Option(None, "--reviews/--no-reviews"),
+              map_: Optional[bool] = typer.Option(None, "--map/--no-map"),
+              gallery: Optional[bool] = typer.Option(None, "--gallery/--no-gallery"),
+              rebuild: bool = typer.Option(True, help="regera o hero na hora")):
+    """Fixa o estilo e liga/desliga seções de um lead; regera a página."""
+    from .hero.build import build
+    from .hero.styles import STYLES
+    con = _con()
+    if style != "auto" and style not in STYLES:
+        con_.print(f"[red]estilo desconhecido. Use: auto, {', '.join(STYLES)}[/red]"); raise typer.Exit(1)
+    opts = {k: v for k, v in {"show_cards": cards, "show_scene": scene, "show_reviews": reviews, "show_map": map_, "show_gallery": gallery}.items() if v is not None}
+    db.update_lead(con, lead_id, hero_style=None if style == "auto" else style, hero_opts=json.dumps(opts) if opts else None)
+    if rebuild:
+        r = build(con, include_low_priority=True, rebuild=True, lead_id=lead_id)
+        con_.print(f"regerado: {r.get('urls', ['-'])[0] if r.get('urls') else 'nada (lead sem telefone ou descartado)'}")
+    else:
+        con_.print("ok")
 
 
 @hero_app.command("templates")

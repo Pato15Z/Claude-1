@@ -9,15 +9,21 @@ API (JSON):
   GET  /api/leads?status=&site=&q=     lista de leads
   GET  /api/lead/<id>                  detalhe + histórico + toques + rascunho
   GET  /api/queue                      fila do dia
-  GET  /api/checklist                  leads com hero: vídeo / enviado / respondeu
+  GET  /api/checklist                  leads com hero: vídeo / email / Facebook / Instagram / follow-up / respondeu
   GET  /api/templates[?name=x]         lista de templates (ou o HTML de um)
+  GET  /api/styles                     estilos (imagem por tipo de negócio, cards)
+  GET  /api/settings                   seu nome, telefone, link padrão do vídeo
+  GET  /api/clients                    fechados: setup, mensal, Wise/Stripe, pago
+  GET  /api/draft?lead_id=&n=          texto do toque N de um lead
   GET  /api/jobs                       saída dos comandos rodando
   GET  /api/public                     URL pública do túnel, se houver
-  POST /api/action  {op, ...}          touch | reply | status | note | set | run |
+  POST /api/action  {op, ...}          touch | untouch | reply | status | note | set | run |
                                        create_lead | save_template | delete_template |
-                                       preview | video
+                                       preview | video | style | style_import | settings |
+                                       client_set | client_churn
   POST /api/video/<id>  (corpo = arquivo)  salva o vídeo do lead em data/videos
-Arquivos: /shots/<id>.png, /hero/<slug>/..., /img/<lead>/<file>, /videos/<file>, /preview/<slug>/...
+  POST /api/style/<estilo> (corpo = imagem) salva a imagem do estilo em data/styles
+Arquivos: /shots/<id>.png, /hero/<slug>/..., /img/<lead>/<file>, /videos/<file>, /preview/<slug>/..., /styles/<file>
 """
 from __future__ import annotations
 
@@ -39,7 +45,7 @@ from ..qualify.runner import auto_qualify_no_site
 from ..sourcing.base import IngestStats, RawLead, ingest_one
 from ..tracking import reports
 from ..tracking.templates import render as render_touch
-from ..tracking.touches import daily_queue, log_reply, log_touch
+from ..tracking.touches import daily_queue, log_reply, log_touch, next_touch
 
 HERE = Path(__file__).parent
 _jobs: list[dict] = []
@@ -64,7 +70,9 @@ def _summary(con):
     cols, rows = reports.qualification_by_region(con, "city")
     out["region"] = _rows(cols, rows)
     out["hero_domain"] = config.HERO_DOMAIN
-    out["verticals"] = config.HUNT_VERTICALS
+    from ..hero.content import CONTENT
+    out["verticals"] = list(dict.fromkeys([*config.HUNT_VERTICALS, *CONTENT]))
+    out["settings"] = db.get_settings(con)
     out["counts"] = {
         "sem_site": con.execute("SELECT COUNT(*) FROM leads WHERE site_status='SEM_SITE'").fetchone()[0],
         "heros": con.execute("SELECT COUNT(*) FROM leads WHERE hero_path IS NOT NULL").fetchone()[0],
@@ -72,8 +80,44 @@ def _summary(con):
         "sent": con.execute("SELECT COUNT(DISTINCT lead_id) FROM touches").fetchone()[0],
         "replied": con.execute("SELECT COUNT(*) FROM leads WHERE status IN ('RESPONDEU','CALL_AGENDADA','FECHADO')").fetchone()[0],
         "closed": con.execute("SELECT COUNT(*) FROM leads WHERE status='FECHADO'").fetchone()[0],
+        "mrr": con.execute("SELECT COALESCE(SUM(mrr),0) FROM clients WHERE churned_at IS NULL").fetchone()[0],
     }
     return out
+
+
+def _sender(con) -> dict:
+    st = db.get_settings(con)
+    return {"sender_name": st.get("sender_name"), "sender_phone": st.get("sender_phone"), "video_url": st.get("video_url")}
+
+
+def _touch_flags(con, lead_id: int) -> dict:
+    rows = con.execute("SELECT touch_number, channel, sent_at, replied_at FROM touches WHERE lead_id=?", (lead_id,)).fetchall()
+    out = {f"t{n}": None for n in config.TOUCH_SCHEDULE}
+    for r in rows:
+        if r["touch_number"] in config.TOUCH_SCHEDULE:
+            out[f"t{r['touch_number']}"] = r["sent_at"]
+    out["replied_at"] = max((r["replied_at"] for r in rows if r["replied_at"]), default=None)
+    return out
+
+
+def _style_info(lead) -> dict:
+    from ..hero.styles import STYLES, detect_style, resolve_opts
+    detected = detect_style(lead["vertical"], lead["category"], lead["name"])
+    style = lead["hero_style"] if lead["hero_style"] in STYLES else detected
+    return {"style": style, "style_fixed": lead["hero_style"] in STYLES, "style_detected": detected,
+            "style_label": STYLES[style]["label"], "opts": resolve_opts(style, lead["hero_opts"])}
+
+
+def _clients(con):
+    rows = con.execute("""SELECT c.*, l.name, l.city, l.state, l.phone_e164, l.email, l.hero_url, l.slug, l.vertical
+                          FROM clients c JOIN leads l ON l.id=c.lead_id ORDER BY c.churned_at IS NOT NULL, c.started_at DESC""").fetchall()
+    out = [dict(r) for r in rows]
+    active = [r for r in out if not r["churned_at"]]
+    tot = {"active": len(active), "churned": len(out) - len(active),
+           "mrr": round(sum(r["mrr"] or 0 for r in active), 2),
+           "setup_paid": round(sum(r["setup_fee"] or 0 for r in out if r["setup_paid_at"]), 2),
+           "setup_open": round(sum(r["setup_fee"] or 0 for r in out if not r["setup_paid_at"]), 2)}
+    return {"clients": out, "totals": tot}
 
 
 def _leads(con, q):
@@ -88,7 +132,7 @@ def _leads(con, q):
         where.append("(name LIKE ? OR city LIKE ? OR phone_e164 LIKE ?)"); args += [f"%{q['q']}%"] * 3
     rows = con.execute(f"""SELECT id, name, city, state, vertical, phone_e164, website_url, status, site_status, site_reason, rating,
                           review_count, email, facebook_url, instagram_url, hero_url, slug, priority, screenshot_path, source,
-                          hero_template, video_done_at, video_url, video_path,
+                          hero_template, hero_style, hero_opts, video_done_at, video_url, video_path,
                           (SELECT COUNT(*) FROM lead_images i WHERE i.lead_id=leads.id AND i.kind<>'logo') AS n_images,
                           (SELECT COUNT(*) FROM touches t WHERE t.lead_id=leads.id) AS n_touches
                           FROM leads WHERE {' AND '.join(where)}
@@ -106,10 +150,17 @@ def _lead(con, lead_id):
     d["touches"] = [dict(r) for r in con.execute("SELECT touch_number, channel, sent_at, replied_at, template FROM touches WHERE lead_id=? ORDER BY touch_number", (lead_id,))]
     d["images"] = [dict(r) for r in con.execute("SELECT path, kind, width, height, source FROM lead_images WHERE lead_id=? ORDER BY score DESC", (lead_id,))]
     d["reviews"] = [dict(r) for r in con.execute("SELECT author, rating, text FROM lead_reviews WHERE lead_id=? ORDER BY rating DESC LIMIT 5", (lead_id,))]
-    nxt = min((max([t["touch_number"] for t in d["touches"]] or [0]) + 1), 4)
-    t1 = next((t for t in d["touches"] if t["touch_number"] == 1), None)
+    done = {t["touch_number"] for t in d["touches"]}
+    nxt = next_touch(lead, done) or 4
+    first = min((t["sent_at"] for t in d["touches"] if t["sent_at"]), default=None)
     d["next_touch"] = nxt
-    d["draft"] = render_touch(nxt, lead, t1["sent_at"][:10] if t1 else None)
+    sender = _sender(con)
+    d["draft"] = render_touch(nxt, lead, first[:10] if first else None, sender)
+    d["drafts"] = {n: render_touch(n, lead, first[:10] if first else None, sender) | {"label": config.TOUCH_SCHEDULE[n]["label"], "sent_at": next((t["sent_at"] for t in d["touches"] if t["touch_number"] == n), None)}
+                   for n in config.TOUCH_SCHEDULE}
+    d["flags"] = _touch_flags(con, lead_id)
+    d.update(_style_info(lead))
+    d["client"] = (lambda r: dict(r) if r else None)(con.execute("SELECT * FROM clients WHERE lead_id=?", (lead_id,)).fetchone())
     d["checks"] = [dict(r) for r in con.execute("SELECT checked_at, site_status, reason, http_status, elapsed_ms FROM site_checks WHERE lead_id=? ORDER BY checked_at DESC LIMIT 3", (lead_id,))]
     return d
 
@@ -120,22 +171,24 @@ def _queue(con):
 
 def _checklist(con):
     rows = con.execute("""
-        SELECT l.id, l.name, l.city, l.state, l.status, l.slug, l.hero_path, l.hero_url, l.video_done_at, l.video_url, l.video_path,
-               l.phone_e164, l.email, l.facebook_url,
+        SELECT l.*,
                (SELECT MIN(sent_at) FROM touches t WHERE t.lead_id=l.id) AS first_sent,
-               (SELECT COUNT(*) FROM touches t WHERE t.lead_id=l.id) AS n_touches,
-               (SELECT MAX(replied_at) FROM touches t WHERE t.lead_id=l.id) AS replied_at
+               (SELECT COUNT(*) FROM touches t WHERE t.lead_id=l.id) AS n_touches
         FROM leads l WHERE l.hero_path IS NOT NULL
         ORDER BY CASE WHEN l.video_done_at IS NULL THEN 0 ELSE 1 END, l.hero_built_at DESC""").fetchall()
     out = []
     for r in rows:
-        d = dict(r)
+        f = _touch_flags(con, r["id"])
+        d = {k: r[k] for k in ("id", "name", "city", "state", "status", "slug", "hero_url", "video_done_at", "video_url", "video_path",
+                               "phone_e164", "email", "facebook_url", "instagram_url", "vertical", "hero_style", "first_sent", "n_touches")}
         d["hero"] = True
         d["video"] = bool(r["video_done_at"])
+        d.update({k: bool(v) for k, v in f.items() if k.startswith("t")})
         d["sent"] = bool(r["first_sent"])
-        d["replied"] = r["status"] in ("RESPONDEU", "CALL_AGENDADA", "FECHADO") or bool(r["replied_at"])
+        d["replied"] = r["status"] in ("RESPONDEU", "CALL_AGENDADA", "FECHADO") or bool(f["replied_at"])
         d["call"] = r["status"] in ("CALL_AGENDADA", "FECHADO")
         d["closed"] = r["status"] == "FECHADO"
+        d.update(_style_info(r))
         out.append(d)
     return out
 
@@ -214,6 +267,8 @@ def _run_action(body: dict) -> dict:
         args = ["hero", "build", "--id", lid]
         if body.get("template"):
             args += ["--template", body["template"]]
+        if body.get("style"):
+            args += ["--style", body["style"]]
         return {"job": _run_job(args)}
     if what == "lead-enrich":
         return {"job": _run_job(["enrich", "run", "--id", str(int(body["lead_id"]))])}
@@ -222,13 +277,15 @@ def _run_action(body: dict) -> dict:
         if not ids:
             return {"error": "selecione pelo menos um lead"}
         tpl = ["--template", body["template"]] if body.get("template") else []
-        return {"job": _run_job(["hero", "batch", "--ids", ",".join(ids), *tpl])}
+        sty = ["--style", body["style"]] if body.get("style") else []
+        return {"job": _run_job(["hero", "batch", "--ids", ",".join(ids), *tpl, *sty])}
     if what == "batch-all":
         return {"job": _run_job(["hero", "batch", "--all-no-site"])}
     if what == "lead-full":
         lid = str(int(body["lead_id"]))
         tpl = ["--template", body["template"]] if body.get("template") else []
-        return {"job": _run_job(["hero", "one", "--id", lid, *tpl])}
+        sty = ["--style", body["style"]] if body.get("style") else []
+        return {"job": _run_job(["hero", "one", "--id", lid, *tpl, *sty])}
     if what not in allowed:
         return {"error": "comando desconhecido"}
     return {"job": _run_job(allowed[what])}
@@ -257,11 +314,57 @@ def _action(con, body: dict) -> dict:
     op = body.get("op")
     lid = int(body.get("lead_id", 0) or 0)
     if op == "touch":
-        log_touch(con, lid, int(body["n"]), body["channel"], template=body.get("template"))
+        n = int(body["n"])
+        channel = body.get("channel") or config.TOUCH_SCHEDULE.get(n, {}).get("channel", "email")
+        if con.execute("SELECT 1 FROM touches WHERE lead_id=? AND touch_number=?", (lid, n)).fetchone():
+            return {"ok": True}   # já marcado
+        log_touch(con, lid, n, channel, template=body.get("template"))
+    elif op == "untouch":   # desmarcar checkmark marcado por engano
+        con.execute("DELETE FROM touches WHERE lead_id=? AND touch_number=?", (lid, int(body["n"])))
     elif op == "reply":
         log_reply(con, lid)
     elif op == "status":
-        db.transition(con, lid, body["status"].upper(), body.get("note"))
+        st = body["status"].upper()
+        if st == "FECHADO":
+            db.ensure_client(con, lid)
+        else:
+            db.transition(con, lid, st, body.get("note"))
+    elif op == "style":   # estilo + seções por lead; regen=True regera a página
+        from ..hero.styles import STYLES, OPTS
+        style = body.get("style") or "auto"
+        if style != "auto" and style not in STYLES:
+            return {"error": "estilo desconhecido"}
+        opts = {k: bool(v) for k, v in (body.get("opts") or {}).items() if k in OPTS}
+        db.update_lead(con, lid, hero_style=None if style == "auto" else style, hero_opts=json.dumps(opts) if opts else None)
+        if body.get("regen"):
+            return {"ok": True, "job": _run_job(["hero", "build", "--id", str(lid)])}
+    elif op == "style_import":
+        from ..hero.styles import import_folder, list_styles
+        folder = Path(body.get("folder") or "")
+        if not folder.is_dir():
+            return {"error": f"pasta não existe: {folder}"}
+        got = import_folder(folder)
+        return {"ok": True, "imported": [{"file": f, "style": k} for f, k in got], "styles": list_styles()}
+    elif op == "settings":
+        db.set_settings(con, {k: v for k, v in (body.get("values") or {}).items() if k in ("sender_name", "sender_phone", "video_url")})
+    elif op == "client_set":
+        field = body.get("field")
+        if field not in ("setup_fee", "mrr", "provider", "setup_paid_at", "last_paid_at", "paid_until", "notes", "started_at"):
+            return {"error": "campo inválido"}
+        val = body.get("value")
+        if field in ("setup_fee", "mrr"):
+            val = float(str(val).replace(",", ".") or 0)
+        elif field in ("setup_paid_at", "last_paid_at") and val is True:
+            val = db.now_iso()[:10]
+        elif val in ("", False):
+            val = None
+        con.execute(f"UPDATE clients SET {field}=? WHERE lead_id=?", (val, lid))
+    elif op == "client_churn":
+        con.execute("UPDATE clients SET churned_at=? WHERE lead_id=?", (db.now_iso() if body.get("on", True) else None, lid))
+        if body.get("on", True):
+            db.transition(con, lid, "PERDIDO", note="churn")
+        else:
+            db.transition(con, lid, "FECHADO", note="voltou")
     elif op == "note":
         db.update_lead(con, lid, notes=body.get("notes", ""))
     elif op == "set":
@@ -391,6 +494,19 @@ class Handler(SimpleHTTPRequestHandler):
                     except FileNotFoundError:
                         return self._json({"error": "template não existe"}, 404)
                 return self._json({"templates": list_templates(), "default": config.HERO_TEMPLATE_DEFAULT})
+            if u.path == "/api/styles":
+                from ..hero.styles import list_styles
+                return self._json({"styles": list_styles(), "opts": ["show_cards", "show_scene", "show_reviews", "show_map", "show_gallery"]})
+            if u.path == "/api/settings":
+                return self._json(db.get_settings(con))
+            if u.path == "/api/clients":
+                return self._json(_clients(con))
+            if u.path == "/api/draft":
+                lead = db.get_lead(con, int(q.get("lead_id") or 0))
+                if not lead:
+                    return self._json({"error": "não existe"}, 404)
+                first = con.execute("SELECT MIN(sent_at) FROM touches WHERE lead_id=?", (lead["id"],)).fetchone()[0]
+                return self._json(render_touch(int(q.get("n") or 1), lead, first[:10] if first else None, _sender(con)))
             if u.path == "/api/jobs":
                 with _jobs_lock:
                     return self._json(list(reversed(_jobs)))
@@ -398,6 +514,11 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(_public)
             if u.path.startswith("/shots/"):
                 return self._file(config.SCREENSHOT_DIR / Path(u.path).name)
+            if u.path.startswith("/styles/"):
+                from ..hero.styles import ASSETS, USER_STYLES_DIR
+                name = Path(u.path).name
+                f = USER_STYLES_DIR / name
+                return self._file(f if f.exists() else ASSETS / name)
             if u.path.startswith("/videos/"):
                 return self._file(config.VIDEOS_DIR / Path(u.path).name)
             if u.path.startswith("/img/"):
@@ -437,6 +558,15 @@ class Handler(SimpleHTTPRequestHandler):
             finally:
                 con.close()
             return self._json({"ok": True, "path": str(out), "url": f"/videos/{out.name}"})
+        if u.path.startswith("/api/style/"):
+            from ..hero.styles import save_style_image, list_styles
+            key = u.path.rsplit("/", 1)[1]
+            data = self.rfile.read(n)
+            try:
+                out = save_style_image(key, data)
+            except Exception as e:
+                return self._json({"error": f"{type(e).__name__}: {e}"}, 400)
+            return self._json({"ok": True, "path": str(out), "styles": list_styles()})
         body = json.loads(self.rfile.read(n) or b"{}")
         if u.path != "/api/action":
             return self.send_error(404)

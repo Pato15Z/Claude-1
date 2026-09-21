@@ -78,6 +78,19 @@ pre{white-space:pre-wrap;background:#0f1115;border:1px solid var(--line);border-
 .bar{height:8px;border-radius:99px;background:#252a3a;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc)}
 iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12px;background:#fff}
 .two{display:grid;grid-template-columns:1fr;gap:12px}
+.styles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.stl{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px;font-size:12px}
+.stl img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:#0f1115;display:block;margin-bottom:6px}
+.stl .noimg{width:100%;aspect-ratio:16/9;border-radius:8px;background:#0f1115;display:flex;align-items:center;justify-content:center;color:var(--mute);margin-bottom:6px;border:1px dashed var(--line)}
+.stl input[type=file]{width:100%;font-size:11px;padding:4px;margin-top:4px}
+.tog{display:flex;flex-wrap:wrap;gap:6px 12px;margin:8px 0}
+.tog label{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600}
+.tog input{width:18px;height:18px}
+.dtabs{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}
+.dtabs button{background:#2a2f3d;border:0;color:var(--ink);padding:6px 10px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer}
+.dtabs button.on{background:var(--acc)}
+.dtabs button.done{border:1px solid var(--ok)}
+td input.mini,td select.mini{padding:5px 7px;font-size:13px;width:auto;min-width:80px}
 @media(min-width:900px){
   nav.top{display:flex}nav.bottom{display:none}body{padding-bottom:20px}
   .two{grid-template-columns:1fr 1fr}
@@ -107,6 +120,14 @@ iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12
     <div class="card"><h2>Resposta por canal e por toque</h2><div class="scroll" id="channels"></div></div>
   </div>
   <div class="card"><h2>Acesso pelo celular</h2><div id="public"></div></div>
+  <div class="card"><h2>Configurações (entram nos textos de email e DM)</h2>
+    <div class="form">
+      <div><label class="f">Seu nome</label><input id="s-name" placeholder="Pato"></div>
+      <div><label class="f">Seu telefone (EUA)</label><input id="s-phone" placeholder="+1 614 555 0100"></div>
+      <div><label class="f">Link padrão do vídeo (se o lead não tiver o dele)</label><input id="s-video" placeholder="https://..."></div>
+    </div>
+    <div class="actions"><button class="btn ok sm" id="s-save">Salvar</button><span class="muted" id="s-info"></span></div>
+  </div>
 </section>
 
 <!-- ===================== LEADS ===================== -->
@@ -127,12 +148,13 @@ iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12
     <label style="display:flex;align-items:center;gap:6px;font-weight:700"><input type="checkbox" id="selall" style="width:20px;height:20px"> selecionar todos da lista</label>
     <span class="muted" id="selcount">0 selecionados</span>
     <select id="seltpl" style="width:auto"></select>
+    <select id="selstyle" style="width:auto"><option value="">estilo: automático</option></select>
     <button class="btn ok" id="selgen" data-label="Gerar site dos selecionados">Gerar site dos selecionados</button>
     <button class="btn sec" id="selgenall" data-label="Gerar site de todos SEM SITE">Gerar site de todos SEM SITE</button>
     <span class="muted" style="font-size:12px">Gerar = busca fotos e avaliações no Google e monta a página. ~10 s por lead.</span>
   </div>
   <div class="card" id="lrun" hidden style="border-color:var(--acc)"><div style="display:flex;gap:10px;align-items:center"><span class="spin"></span><b id="lruntitle">gerando…</b></div><div class="log" id="lrunlog" style="margin-top:8px;max-height:200px"></div></div>
-  <div class="card scroll" style="padding:0"><table id="ltable"><thead><tr><th></th><th></th><th>nome</th><th>cidade</th><th>site</th><th>etapa</th><th class="hide-m">telefone</th><th class="hide-m">nota</th><th class="hide-m">fotos</th><th>hero</th><th class="hide-m">origem</th></tr></thead><tbody></tbody></table></div>
+  <div class="card scroll" style="padding:0"><table id="ltable"><thead><tr><th></th><th></th><th>nome</th><th>cidade</th><th>site</th><th>etapa</th><th class="hide-m">telefone</th><th class="hide-m">nota</th><th class="hide-m">fotos</th><th class="hide-m">estilo</th><th>hero</th><th class="hide-m">origem</th></tr></thead><tbody></tbody></table></div>
 </section>
 
 <!-- ===================== NOVO LEAD ===================== -->
@@ -183,20 +205,38 @@ iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12
     <div class="actions"><span class="muted" id="t-info"></span></div>
     <div id="t-frame"></div>
   </div>
+  <div class="card">
+    <h2>Imagens por tipo de negócio (estilos)</h2>
+    <p class="help">Cada negócio recebe a imagem do seu tipo: mudanças, jardinagem, car detailing, pragas, calhas com <b>cards de serviço</b>; handyman, árvores e carpete só a imagem. O tipo é detectado sozinho; troque por lead na gaveta do lead ou no Checklist. Envie a sua imagem em cada quadro, ou importe a pasta de uma vez.</p>
+    <div class="actions"><input id="st-folder" placeholder='pasta com as imagens, ex: D:\MPBS\IMGS TEMP' style="width:auto;min-width:260px;flex:1"><button class="btn sec" id="st-import">Importar pasta</button><span class="muted" id="st-info"></span></div>
+    <div class="styles" id="styles"></div>
+  </div>
 </section>
 
 <!-- ===================== VÍDEOS ===================== -->
 <section id="tab-videos" hidden>
   <div class="card">
-    <h2>Checklist por lead: vídeo, envio, resposta</h2>
-    <p class="help">Marque o vídeo quando gravar. Enviado e respondeu vêm dos toques registrados. Toque no nome para abrir o lead e o texto do email.</p>
-    <div class="scroll"><table id="vtable"><thead><tr><th>nome</th><th>hero</th><th>vídeo</th><th>enviado</th><th>respondeu</th><th>call</th><th>fechou</th><th class="hide-m">arquivo / link</th></tr></thead><tbody></tbody></table></div>
+    <h2>Sites gerados: vídeo, email, Facebook, Instagram, follow-up</h2>
+    <p class="help">Ordem: grave o vídeo → email com o vídeo → DM no Facebook (dia 2) → DM no Instagram (dia 3) → email de follow-up (dia 6). Clique no quadrado para marcar (ou desmarcar). Toque no nome para ver os textos prontos e trocar o estilo do site.</p>
+    <div class="scroll"><table id="vtable"><thead><tr><th>nome</th><th>vídeo</th><th>email</th><th>Facebook</th><th>Instagram</th><th>follow-up</th><th>respondeu</th><th>fechou</th><th class="hide-m">estilo do site</th><th class="hide-m">arquivo / link</th></tr></thead><tbody></tbody></table></div>
   </div>
 </section>
 
 <!-- ===================== FILA ===================== -->
 <section id="tab-fila" hidden>
-  <div class="card"><h2>Contatos de hoje (ordem: leste → oeste)</h2><div class="scroll" id="queue"></div></div>
+  <div class="card"><h2>Devidos hoje (ordem: leste → oeste)</h2>
+    <p class="help">Quem precisa de contato hoje, com o texto pronto. Toque cujo canal o lead não tem (sem Facebook, por exemplo) é pulado sozinho.</p>
+    <div class="scroll" id="queue"></div></div>
+</section>
+
+<!-- ===================== FECHADOS ===================== -->
+<section id="tab-fechados" hidden>
+  <div class="grid" id="ctiles"></div>
+  <div class="card">
+    <h2>Clientes fechados</h2>
+    <p class="help">Marque "fechado" no lead (gaveta ou Checklist) e ele aparece aqui. Edite valor do setup, mensal, onde recebe (Wise / Stripe) e se o setup foi pago.</p>
+    <div class="scroll"><table id="ctable"><thead><tr><th>cliente</th><th>desde</th><th>setup ($)</th><th>setup pago</th><th>mensal ($)</th><th>recebe por</th><th>última cobrança</th><th>obs</th><th></th></tr></thead><tbody></tbody></table></div>
+  </div>
 </section>
 
 <!-- ===================== RODAR ===================== -->
@@ -265,9 +305,11 @@ const TABS = [['painel','Painel','M3 13h8V3H3v10zm10 8h8V11h-8v10zM3 21h8v-6H3v6
               ['leads','Leads','M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z'],
               ['novo','Adicionar','M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'],
               ['videos','Checklist','M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'],
-              ['fila','Contatos hoje','M12 2a10 10 0 100 20 10 10 0 000-20zm.5 5H11v6l5.25 3.15.75-1.23-4.5-2.67V7z'],
+              ['fila','Follow-up','M12 2a10 10 0 100 20 10 10 0 000-20zm.5 5H11v6l5.25 3.15.75-1.23-4.5-2.67V7z'],
+              ['fechados','Fechados','M12 2L2 7l10 5 10-5-10-5zm0 13l-8-4v3l8 4 8-4v-3l-8 4z'],
               ['templates','Modelos','M3 3h18v4H3V3zm0 6h8v12H3V9zm10 0h8v5h-8V9zm0 7h8v5h-8v-5z']];
-let site = '', tab = location.hash.replace('#','') || 'painel', templates = [], verticals = [];
+let site = '', tab = location.hash.replace('#','') || 'painel', templates = [], verticals = [], styles = [];
+const TOUCH = {1:'email',2:'Facebook',3:'Instagram',4:'follow-up'};
 
 function toast(m){ const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2600); }
 function table(rows, cols){
@@ -287,7 +329,7 @@ function go(t){ tab = t; location.hash = t; $$('main section').forEach(s => s.hi
 async function loadPainel(){
   const s = await api('/api/summary'); verticals = s.verticals;
   const c = s.counts;
-  $('#tiles').innerHTML = [['SEM SITE',c.sem_site,'k'],['heros prontos',c.heros],['vídeos feitos',c.videos],['enviados',c.sent],['responderam',c.replied],['fechados',c.closed]]
+  $('#tiles').innerHTML = [['SEM SITE',c.sem_site,'k'],['sites prontos',c.heros],['vídeos feitos',c.videos],['enviados',c.sent],['responderam',c.replied],['fechados',c.closed],['mensal (MRR)','$'+(c.mrr||0)]]
     .map(([l,v,k]) => `<div class="tile ${k||''}"><b>${v}</b><span>${l}</span></div>`).join('');
   const st = Object.fromEntries(s.status.map(r => [r.status, r.leads]));
   const order = ['NOVO','QUALIFICADO','ENRIQUECIDO','HERO_PRONTO','ENVIADO','RESPONDEU','CALL_AGENDADA','FECHADO','PERDIDO','DESCARTADO'];
@@ -297,7 +339,14 @@ async function loadPainel(){
   $('#channels').innerHTML = table(s.channels) + '<br>' + table(s.touches);
   loadPublic();
   fillSelects();
+  const cfg = s.settings || {};
+  if(document.activeElement !== $('#s-name')) $('#s-name').value = cfg.sender_name || '';
+  if(document.activeElement !== $('#s-phone')) $('#s-phone').value = cfg.sender_phone || '';
+  if(document.activeElement !== $('#s-video')) $('#s-video').value = cfg.video_url || '';
 }
+$('#s-save').onclick = async () => { const r = await post({op:'settings', values:{sender_name:$('#s-name').value, sender_phone:$('#s-phone').value, video_url:$('#s-video').value}}); $('#s-info').textContent = r.error || 'salvo'; };
+async function loadStyles(){ if(!styles.length){ const r = await api('/api/styles'); styles = r.styles; } return styles; }
+function styleOpts(cur){ return '<option value="auto">automático</option>' + styles.map(x => `<option value="${x.key}" ${cur===x.key?'selected':''}>${esc(x.label)}${x.has_image?'':' (sem imagem)'}</option>`).join(''); }
 async function loadPublic(){
   const p = await api('/api/public');
   const box = $('#public');
@@ -329,20 +378,22 @@ async function loadLeads(){
     <td>${r.site_status ? `<span class="pill ${r.site_status}">${r.site_status.replace('SITE_','').replace('_',' ')}</span>` : '<span class="muted">—</span>'}</td>
     <td><span class="pill st">${r.status}</span></td>
     <td class="hide-m">${esc(r.phone_e164||'')}</td><td class="hide-m">${r.rating ?? ''}</td><td class="hide-m">${r.n_images || ''}</td>
+    <td class="hide-m muted" style="font-size:12px">${esc(r.hero_style || 'auto')}</td>
     <td>${r.slug ? `<a class="btn sec sm" href="/hero/${r.slug}/" target="_blank" onclick="event.stopPropagation()">ver site ↗</a>` : '<span class="muted">—</span>'}</td>
     <td class="hide-m muted">${esc(r.source||'')}</td></tr>`).join('');
   $$('#ltable tr.row').forEach(tr => tr.onclick = () => openLead(+tr.dataset.id));
   $$('.selbox').forEach(cb => cb.onchange = () => { window._sel = window._sel || new Set(); cb.checked ? window._sel.add(+cb.value) : window._sel.delete(+cb.value); selCount(); });
   selCount();
-  await fillSelects();
+  await fillSelects(); await loadStyles();
   if(!$('#seltpl').options.length) $('#seltpl').innerHTML = templates.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+  if($('#selstyle').options.length < 2) $('#selstyle').innerHTML = '<option value="">estilo: automático</option>' + styles.map(x => `<option value="${x.key}">estilo: ${esc(x.label)}</option>`).join('');
 }
 function selCount(){ const n = (window._sel || new Set()).size; $('#selcount').textContent = n + ' selecionado' + (n === 1 ? '' : 's'); }
 $('#selall').onchange = () => { window._sel = new Set($('#selall').checked ? (window._leadRows || []).map(r => r.id) : []); $$('.selbox').forEach(cb => cb.checked = window._sel.has(+cb.value)); selCount(); };
 async function runBatch(all){
   const ids = [...(window._sel || [])];
   if(!all && !ids.length){ toast('marque pelo menos um lead'); return; }
-  const r = await post(all ? {op:'run', what:'batch-all'} : {op:'run', what:'batch', ids, template:$('#seltpl').value});
+  const r = await post(all ? {op:'run', what:'batch-all'} : {op:'run', what:'batch', ids, template:$('#seltpl').value, style:$('#selstyle').value});
   if(r.error){ toast(r.error); return; }
   $('#lrun').hidden = false; $('#lruntitle').textContent = all ? 'Gerando sites de todos SEM SITE…' : `Gerando ${ids.length} site(s)…`; $('#lrunlog').textContent = 'iniciando…';
   ['#selgen','#selgenall'].forEach(x => $(x).disabled = true);
@@ -356,9 +407,14 @@ async function runBatch(all){
 $('#selgen').onclick = () => runBatch(false); $('#selgenall').onclick = () => runBatch(true);
 async function openLead(id){
   const d = await api('/api/lead/' + id);
-  await fillSelects();
-  const contact = {email: d.email, facebook_page: d.facebook_url || d.instagram_url, instagram: d.instagram_url, ligacao: d.phone_e164}[d.draft.channel] || '—';
+  await fillSelects(); await loadStyles();
   const tplOpts = templates.map(t => `<option value="${t.name}" ${(d.hero_template||templates._default)===t.name?'selected':''}>${t.name}</option>`).join('');
+  const o = d.opts || {};
+  const tog = (k, l) => `<label><input type="checkbox" id="o-${k}" ${o[k]?'checked':''}> ${l}</label>`;
+  const contactFor = ch => ({email: d.email, facebook_page: d.facebook_url, instagram: d.instagram_url, ligacao: d.phone_e164}[ch] || '');
+  const drafts = d.drafts || {};
+  const dtabs = Object.keys(drafts).map(n => `<button class="${+n===d.next_touch?'on':''} ${drafts[n].sent_at?'done':''}" onclick="showDraft(${n})">${drafts[n].sent_at?'✓ ':''}${n}. ${TOUCH[n]}</button>`).join('');
+  window._drafts = drafts;
   $('#dbody').innerHTML = `
     <h3>${esc(d.name)}</h3>
     <div class="muted">#${d.id} · ${esc(d.city||'')}${d.state?', '+esc(d.state):''} · ${esc(d.vertical)} · ${d.rating ?? '—'} ★ (${d.review_count ?? 0}) · ${esc(d.source)}</div>
@@ -368,14 +424,20 @@ async function openLead(id){
       ${d.website_url ? `<a class="btn sec sm" href="${esc(d.website_url)}" target="_blank">site atual</a>` : ''}
       ${d.gbp_url ? `<a class="btn sec sm" href="${esc(d.gbp_url)}" target="_blank">Google</a>` : ''}
       ${d.facebook_url ? `<a class="btn sec sm" href="${esc(d.facebook_url)}" target="_blank">Facebook</a>` : ''}
+      ${d.instagram_url ? `<a class="btn sec sm" href="${esc(d.instagram_url)}" target="_blank">Instagram</a>` : ''}
     </div>
-    <div class="card" style="background:var(--card2)"><h2>Gerar</h2>
+    <div class="card" style="background:var(--card2)"><h2>Gerar o site</h2>
       <div class="actions" style="margin:0">
         <select id="d-template" style="width:auto">${tplOpts}</select>
         <button class="btn ok sm" onclick="runLead('lead-full', ${d.id})">Gerar site (busca fotos e avaliações)</button>
         <button class="btn sec sm" onclick="runLead('lead-hero', ${d.id})">Só remontar a página</button>
       </div>
       <div id="d-job" class="muted" style="margin-top:6px;font-size:12px"></div>
+    </div>
+    <div class="card" style="background:var(--card2)"><h2>Estilo do site (imagem e seções)</h2>
+      <div class="actions" style="margin:0"><select id="d-style" style="width:auto">${styleOpts(d.style_fixed ? d.style : 'auto')}</select><span class="muted" style="font-size:12px">detectado: ${esc(d.style_label)}</span></div>
+      <div class="tog">${tog('show_cards','cards de serviço')}${tog('show_scene','imagem do tipo')}${tog('show_gallery','fotos do Google')}${tog('show_reviews','avaliações')}${tog('show_map','mapa')}</div>
+      <button class="btn ok sm" onclick="applyStyle(${d.id})">Aplicar e regerar a página</button>
     </div>
     <div class="kv">
       <div>telefone</div><div>${esc(d.phone_e164||'—')}</div>
@@ -389,24 +451,43 @@ async function openLead(id){
     </div>
     ${d.screenshot_path ? `<div class="muted">site atual no celular:</div><img class="shot" src="/shots/${d.id}.png">` : ''}
     ${d.images.length ? `<div class="muted" style="margin-top:8px">fotos:</div><div class="gal">${d.images.map(i => `<img src="/img/${d.id}/${i.path.split(/[\\\\/]/).pop()}" title="${i.kind}">`).join('')}</div>` : ''}
-    <h2 style="margin-top:14px;font-size:12px;color:var(--mute);text-transform:uppercase">Próximo toque: ${d.next_touch} · ${d.draft.channel} · contato: ${esc(contact)}</h2>
-    ${d.draft.subject ? `<div><b>Assunto:</b> ${esc(d.draft.subject)}</div>` : ''}
-    <pre id="draft">${esc(d.draft.body)}</pre>
+    <h2 style="margin-top:14px;font-size:12px;color:var(--mute);text-transform:uppercase">Textos prontos (vídeo primeiro)</h2>
+    <div class="dtabs">${dtabs}</div>
+    <div id="draftbox"></div>
     <div class="actions">
-      <button class="btn sec sm" onclick="navigator.clipboard.writeText(document.getElementById('draft').innerText).then(()=>toast('copiado'))">copiar texto</button>
-      <button class="btn ok sm" onclick="act({op:'touch', lead_id:${d.id}, n:${d.next_touch}, channel:'${d.draft.channel}'})">marcar toque ${d.next_touch} enviado</button>
       <button class="btn sm" onclick="act({op:'reply', lead_id:${d.id}})">respondeu</button>
       <button class="btn warn sm" onclick="act({op:'status', lead_id:${d.id}, status:'CALL_AGENDADA'})">call agendada</button>
-      <button class="btn ok sm" onclick="act({op:'status', lead_id:${d.id}, status:'FECHADO'})">fechado</button>
+      <button class="btn ok sm" onclick="act({op:'status', lead_id:${d.id}, status:'FECHADO'})">fechado (vira cliente)</button>
       <button class="btn bad sm" onclick="act({op:'status', lead_id:${d.id}, status:'PERDIDO'})">perdido</button>
       <button class="btn bad sm" onclick="act({op:'status', lead_id:${d.id}, status:'DESCARTADO'})">descartar</button>
     </div>
-    <div class="form"><div><label class="f">campo</label><select id="setfield"><option>email</option><option>phone_e164</option><option>facebook_url</option><option>instagram_url</option><option>website_url</option><option>city</option><option>state</option><option>notes</option><option>video_url</option></select></div><div><label class="f">valor</label><input id="setvalue"></div><div style="align-self:end"><button class="btn sec" onclick="act({op:'set', lead_id:${d.id}, field:$('#setfield').value, value:$('#setvalue').value})">salvar campo</button></div></div>
+    <div class="form"><div><label class="f">campo</label><select id="setfield"><option>email</option><option>phone_e164</option><option>facebook_url</option><option>instagram_url</option><option>website_url</option><option>city</option><option>state</option><option>vertical</option><option>notes</option><option>video_url</option></select></div><div><label class="f">valor</label><input id="setvalue"></div><div style="align-self:end"><button class="btn sec" onclick="act({op:'set', lead_id:${d.id}, field:$('#setfield').value, value:$('#setvalue').value})">salvar campo</button></div></div>
     <h2 style="margin-top:14px;font-size:12px;color:var(--mute);text-transform:uppercase">Histórico</h2>
     <div class="scroll">${table(d.history)}</div>
     ${d.touches.length ? '<div class="scroll">' + table(d.touches) + '</div>' : ''}`;
   $('#drawer').classList.add('on');
   window._lead = id;
+  showDraft(d.next_touch);
+}
+function showDraft(n){
+  const d = window._drafts[n]; if(!d) return;
+  const id = window._lead;
+  $$('.dtabs button').forEach((b, i) => b.classList.toggle('on', i + 1 === +n));
+  const contact = {email: 'email', facebook_page: 'DM na página do Facebook', instagram: 'DM no Instagram'}[d.channel] || d.channel;
+  $('#draftbox').innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">${n}. ${TOUCH[n]} · ${contact}${d.sent_at ? ' · <span class="good">enviado ' + d.sent_at.slice(0,10) + '</span>' : ''}</div>
+    ${d.subject ? `<div><b>Assunto:</b> ${esc(d.subject)}</div>` : ''}
+    <pre id="draft">${esc(d.body)}</pre>
+    <div class="actions">
+      <button class="btn sec sm" onclick="navigator.clipboard.writeText(document.getElementById('draft').innerText).then(()=>toast('copiado'))">copiar texto</button>
+      ${d.sent_at ? `<button class="btn sec sm" onclick="act({op:'untouch', lead_id:${id}, n:${n}})">desmarcar</button>` : `<button class="btn ok sm" onclick="act({op:'touch', lead_id:${id}, n:${n}, channel:'${d.channel}'})">marcar ${TOUCH[n]} enviado ✓</button>`}
+    </div>`;
+}
+async function applyStyle(id){
+  const opts = {}; ['show_cards','show_scene','show_gallery','show_reviews','show_map'].forEach(k => opts[k] = $('#o-' + k).checked);
+  const r = await post({op:'style', lead_id:id, style:$('#d-style').value, opts, regen:true});
+  if(r.error){ toast(r.error); return; }
+  toast('regerando a página…');
+  pollJobs(() => { if(window._lead === id) openLead(id); loadLeads(); if(tab === 'videos') loadVideos(); });
 }
 async function runLead(what, id){
   const r = await post({op:'run', what, lead_id:id, template: $('#d-template') ? $('#d-template').value : ''});
@@ -446,6 +527,7 @@ async function loadTemplates(){
   const t = await api('/api/templates'); templates = t.templates; templates._default = t.default;
   $('#t-select').innerHTML = templates.map(x => `<option value="${x.name}">${x.name} (${x.source})</option>`).join('');
   $('#t-info').textContent = 'padrão: ' + t.default + ' · seus templates ficam em data/templates';
+  loadStyleCards();
 }
 async function tLoad(){
   const name = $('#t-select').value; const r = await api('/api/templates?name=' + encodeURIComponent(name));
@@ -474,18 +556,24 @@ async function tDelete(){
 
 // ---------- vídeos
 async function loadVideos(){
-  const rows = await api('/api/checklist');
+  const rows = await api('/api/checklist'); await loadStyles();
   const ck = (on, ro) => `<span class="check ${on?'on':''} ${ro?'ro':''}">${on?'✓':''}</span>`;
+  const tk = (r, n) => r['t'+n] ? `<span class="check on" title="desmarcar" onclick="act({op:'untouch', lead_id:${r.id}, n:${n}})">✓</span>`
+                               : `<span class="check" title="marcar enviado" onclick="act({op:'touch', lead_id:${r.id}, n:${n}})"></span>`;
   $('#vtable tbody').innerHTML = rows.length ? rows.map(r => `<tr>
-    <td><a href="#" onclick="openLead(${r.id});return false"><b>${esc(r.name)}</b></a><div class="muted" style="font-size:11px">${esc(r.city||'')}${r.state?', '+esc(r.state):''} · <a href="/hero/${r.slug}/" target="_blank">hero</a></div></td>
-    <td>${ck(true,true)}</td>
+    <td><a href="#" onclick="openLead(${r.id});return false"><b>${esc(r.name)}</b></a><div class="muted" style="font-size:11px">${esc(r.city||'')}${r.state?', '+esc(r.state):''} · <a href="/hero/${r.slug}/" target="_blank">ver site ↗</a>${r.email?'':' · <span class="warn">sem email</span>'}${r.facebook_url?'':' · sem FB'}${r.instagram_url?'':' · sem IG'}</div></td>
     <td><span class="check ${r.video?'on':''}" onclick="toggleVideo(${r.id}, ${!r.video})">${r.video?'✓':''}</span></td>
-    <td>${r.sent ? ck(true,true) : `<button class="btn sec sm" onclick="act({op:'touch', lead_id:${r.id}, n:1, channel:'email'})">enviei</button>`}</td>
-    <td>${r.replied ? ck(true,true) : `<button class="btn sec sm" onclick="act({op:'reply', lead_id:${r.id}})">respondeu</button>`}</td>
-    <td>${r.call ? ck(true,true) : `<button class="btn sec sm" onclick="act({op:'status', lead_id:${r.id}, status:'CALL_AGENDADA'})">call</button>`}</td>
-    <td>${r.closed ? ck(true,true) : `<button class="btn ok sm" onclick="act({op:'status', lead_id:${r.id}, status:'FECHADO'})">fechou</button>`}</td>
+    <td>${tk(r,1)}</td><td>${tk(r,2)}</td><td>${tk(r,3)}</td><td>${tk(r,4)}</td>
+    <td>${r.replied ? ck(true,true) : `<span class="check" onclick="act({op:'reply', lead_id:${r.id}})"></span>`}</td>
+    <td>${r.closed ? ck(true,true) : `<span class="check" onclick="if(confirm('Marcar ${esc(r.name).replace(/'/g,'')} como fechado?')) act({op:'status', lead_id:${r.id}, status:'FECHADO'})"></span>`}</td>
+    <td class="hide-m"><select class="mini" id="cs-${r.id}">${styleOpts(r.style_fixed ? r.style : 'auto')}</select> <label style="font-size:12px"><input type="checkbox" id="cc-${r.id}" ${r.opts && r.opts.show_cards ? 'checked' : ''}> cards</label> <button class="btn sec sm" onclick="quickStyle(${r.id})">regerar</button></td>
     <td class="hide-m"><input type="file" accept="video/*" style="width:190px;padding:4px;font-size:12px" onchange="uploadVideo(${r.id}, this)"> ${r.video_path ? `<a href="/videos/${esc(r.video_path.split(/[\\\\/]/).pop())}" target="_blank">ver</a>` : ''} <input placeholder="ou link do vídeo" value="${esc(r.video_url||'')}" style="width:170px;padding:6px;font-size:12px" onchange="act({op:'video', lead_id:${r.id}, url:this.value})"></td>
-  </tr>`).join('') : '<tr><td colspan="8" class="muted">nenhum hero gerado ainda. Gere em Rodar ou pelo lead.</td></tr>';
+  </tr>`).join('') : '<tr><td colspan="10" class="muted">nenhum site gerado ainda. Gere na aba Leads (selecione e "Gerar site").</td></tr>';
+}
+async function quickStyle(id){
+  const r = await post({op:'style', lead_id:id, style:$('#cs-' + id).value, opts:{show_cards: $('#cc-' + id).checked}, regen:true});
+  if(r.error){ toast(r.error); return; }
+  toast('regerando…'); pollJobs(() => loadVideos());
 }
 async function toggleVideo(id, done){ await post({op:'video', lead_id:id, done}); loadVideos(); loadPainel(); }
 async function uploadVideo(id, input){
@@ -498,13 +586,63 @@ async function uploadVideo(id, input){
 // ---------- fila
 async function loadQueue(){
   const rows = await api('/api/queue');
-  if(!rows.length){ $('#queue').innerHTML = '<p class="muted">ninguém devido hoje. Gere heros para entrarem na fila do toque 1.</p>'; return; }
-  const contact = i => ({email: i.email, facebook_page: i.facebook_url || i.instagram_url, instagram: i.instagram_url, ligacao: i.phone}[i.channel] || '—');
-  $('#queue').innerHTML = '<table><thead><tr><th>nome</th><th>hora local</th><th>toque</th><th>canal</th><th>contato</th><th></th></tr></thead><tbody>' +
-    rows.map(i => `<tr class="row" data-id="${i.lead_id}"><td><b>${esc(i.name)}</b><div class="muted" style="font-size:11px">${esc(i.city)}, ${esc(i.state)}${i.days_overdue>0 ? ' · atraso ' + i.days_overdue + 'd' : ''}</div></td><td>${i.local_now} <span class="muted">${i.tz.split('/').pop()}</span></td><td>${i.touch_number}</td><td>${i.channel}</td><td>${esc(contact(i))}</td>
-      <td><button class="btn ok sm" onclick="event.stopPropagation();act({op:'touch', lead_id:${i.lead_id}, n:${i.touch_number}, channel:'${i.channel}'})">enviado</button></td></tr>`).join('') + '</tbody></table>';
+  if(!rows.length){ $('#queue').innerHTML = '<p class="muted">ninguém devido hoje. Gere sites para entrarem na fila do email 1; depois a fila puxa Facebook (dia 2), Instagram (dia 3) e o follow-up (dia 6).</p>'; return; }
+  const contact = i => ({email: i.email, facebook_page: i.facebook_url, instagram: i.instagram_url, ligacao: i.phone}[i.channel] || '—');
+  $('#queue').innerHTML = '<table><thead><tr><th>nome</th><th>hora local</th><th>toque</th><th>contato</th><th></th></tr></thead><tbody>' +
+    rows.map(i => `<tr class="row" data-id="${i.lead_id}"><td><b>${esc(i.name)}</b><div class="muted" style="font-size:11px">${esc(i.city)}, ${esc(i.state)}${i.days_overdue>0 ? ' · atraso ' + i.days_overdue + 'd' : ''}</div></td><td>${i.local_now} <span class="muted">${i.tz.split('/').pop()}</span></td><td>${i.touch_number}. ${TOUCH[i.touch_number]}</td><td>${esc(contact(i))}</td>
+      <td style="white-space:nowrap"><button class="btn sec sm" onclick="event.stopPropagation();showQueueDraft(${i.lead_id}, ${i.touch_number}, this)">texto</button> <button class="btn ok sm" onclick="event.stopPropagation();act({op:'touch', lead_id:${i.lead_id}, n:${i.touch_number}, channel:'${i.channel}'})">enviado ✓</button></td></tr><tr id="qd-${i.lead_id}" hidden><td colspan="5"></td></tr>`).join('') + '</tbody></table>';
   $$('#queue tr.row').forEach(tr => tr.onclick = () => openLead(+tr.dataset.id));
 }
+async function showQueueDraft(id, n, btn){
+  const tr = $('#qd-' + id); if(!tr.hidden){ tr.hidden = true; return; }
+  const d = await api(`/api/draft?lead_id=${id}&n=${n}`);
+  tr.hidden = false; tr.firstElementChild.innerHTML = `${d.subject ? `<div><b>Assunto:</b> ${esc(d.subject)}</div>` : ''}<pre id="qdraft-${id}" style="white-space:pre-wrap">${esc(d.body)}</pre><button class="btn sec sm" onclick="navigator.clipboard.writeText(document.getElementById('qdraft-${id}').innerText).then(()=>toast('copiado'))">copiar texto</button>`;
+}
+
+// ---------- fechados
+async function loadFechados(){
+  const r = await api('/api/clients'); const t = r.totals;
+  $('#ctiles').innerHTML = [['clientes ativos',t.active,'k'],['mensal (MRR)','$'+t.mrr,'k'],['setup recebido','$'+t.setup_paid],['setup a receber','$'+t.setup_open],['perdidos (churn)',t.churned]].map(([l,v,k]) => `<div class="tile ${k||''}"><b>${v}</b><span>${l}</span></div>`).join('');
+  const set = (id, f) => `onchange="cset(${id}, '${f}', this)"`;
+  $('#ctable tbody').innerHTML = r.clients.length ? r.clients.map(c => `<tr style="${c.churned_at?'opacity:.55':''}">
+    <td><a href="#" onclick="openLead(${c.lead_id});return false"><b>${esc(c.name)}</b></a><div class="muted" style="font-size:11px">${esc(c.city||'')}${c.state?', '+esc(c.state):''} · ${esc(c.vertical||'')}${c.hero_url ? ` · <a href="/hero/${c.slug}/" target="_blank">site</a>` : ''}${c.churned_at ? ' · <span class="bad">churn ' + c.churned_at.slice(0,10) + '</span>' : ''}</div></td>
+    <td>${(c.started_at||'').slice(0,10)}</td>
+    <td><input class="mini" inputmode="decimal" value="${c.setup_fee ?? ''}" ${set(c.lead_id,'setup_fee')}></td>
+    <td><input type="checkbox" style="width:20px;height:20px" ${c.setup_paid_at?'checked':''} onchange="cset(${c.lead_id}, 'setup_paid_at', this)"> <span class="muted" style="font-size:11px">${c.setup_paid_at ? c.setup_paid_at.slice(0,10) : ''}</span></td>
+    <td><input class="mini" inputmode="decimal" value="${c.mrr ?? ''}" ${set(c.lead_id,'mrr')}></td>
+    <td><select class="mini" ${set(c.lead_id,'provider')}><option value="">—</option>${['wise','stripe','outro'].map(p => `<option ${c.provider===p?'selected':''}>${p}</option>`).join('')}</select></td>
+    <td><input class="mini" type="date" value="${(c.last_paid_at||'').slice(0,10)}" ${set(c.lead_id,'last_paid_at')}></td>
+    <td><input class="mini" value="${esc(c.notes||'')}" style="min-width:140px" ${set(c.lead_id,'notes')}></td>
+    <td>${c.churned_at ? `<button class="btn sec sm" onclick="post({op:'client_churn', lead_id:${c.lead_id}, on:false}).then(loadFechados)">voltou</button>` : `<button class="btn bad sm" onclick="if(confirm('Marcar como perdido (churn)?')) post({op:'client_churn', lead_id:${c.lead_id}, on:true}).then(loadFechados)">churn</button>`}</td>
+  </tr>`).join('') : '<tr><td colspan="9" class="muted">nenhum cliente ainda. Marque "fechado" no lead.</td></tr>';
+}
+async function cset(id, field, el){
+  const value = el.type === 'checkbox' ? (el.checked ? true : '') : el.value;
+  const r = await post({op:'client_set', lead_id:id, field, value});
+  if(r.error) toast(r.error); else { toast('salvo'); if(field === 'setup_paid_at' || field === 'setup_fee' || field === 'mrr') loadFechados(); }
+}
+
+// ---------- estilos (imagens por tipo de negócio)
+async function loadStyleCards(){
+  styles = []; await loadStyles();
+  $('#styles').innerHTML = styles.map(x => `<div class="stl">
+    ${x.has_image ? `<img src="${x.image}?${Date.now()}">` : '<div class="noimg">sem imagem</div>'}
+    <b>${esc(x.label)}</b><div class="muted">${x.key} · ${x.cards ? 'com cards' : 'sem cards'} · ${x.has_image ? (x.user_image ? 'sua imagem' : 'imagem do pacote') : 'envie uma imagem'}</div>
+    <input type="file" accept="image/*" onchange="uploadStyle('${x.key}', this)">
+  </div>`).join('');
+}
+async function uploadStyle(key, input){
+  const f = input.files[0]; if(!f) return; toast('enviando…');
+  const r = await fetch('/api/style/' + key, {method:'POST', body:f}).then(r => r.json());
+  if(r.error) toast(r.error); else { toast('imagem salva'); loadStyleCards(); }
+}
+$('#st-import').onclick = async () => {
+  const folder = $('#st-folder').value.trim(); if(!folder){ toast('digite a pasta'); return; }
+  const r = await post({op:'style_import', folder});
+  if(r.error){ $('#st-info').textContent = r.error; toast(r.error); return; }
+  $('#st-info').textContent = r.imported.map(i => `${i.file} → ${i.style || 'não reconhecido'}`).join(' · ');
+  loadStyleCards();
+};
 
 // ---------- rodar
 let _pollT = null;
@@ -558,7 +696,7 @@ $('#fstatus').onchange = loadLeads; $('#fsource').onchange = loadLeads; $('#fq')
 $('#dclose').onclick = () => { $('#drawer').classList.remove('on'); window._lead = null; };
 $('#n-save').onclick = () => saveNovo(false); $('#n-save-build').onclick = () => saveNovo(true);
 $('#t-load').onclick = tLoad; $('#t-save').onclick = tSave; $('#t-preview').onclick = tPreview; $('#t-delete').onclick = tDelete;
-function refresh(){ ({painel: loadPainel, leads: loadLeads, novo: fillSelects, templates: loadTemplates, videos: loadVideos, fila: loadQueue, rodar: loadJobs})[tab](); }
+function refresh(){ (({painel: loadPainel, leads: loadLeads, novo: fillSelects, templates: loadTemplates, videos: loadVideos, fila: loadQueue, fechados: loadFechados, rodar: loadJobs})[tab] || loadPainel)(); }
 window.addEventListener("hashchange", () => { const t = location.hash.replace("#",""); if(t && t !== tab) go(t); });
 nav(); go(tab); loadJobs();
 </script>
