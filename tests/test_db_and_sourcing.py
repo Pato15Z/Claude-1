@@ -84,3 +84,15 @@ def test_places_for_state():
     counties = places_for_state("OH", "county")
     assert len(counties) == 88 and "Licking County" in counties
     assert len(places_for_state("OH", "city", 20000)) > 50
+
+
+def test_geo_fence():
+    from leadpipe.sourcing.geo import accept, in_state, is_us_phone, state_center
+    assert in_state(39.96, -82.99, "OH") is True and in_state(-23.5, -46.6, "OH") is False and in_state(None, None, "OH") is None
+    assert is_us_phone("614-555-0100") is True
+    assert is_us_phone("43 3329-8894") is False          # DDD brasileiro parseado como EUA: área 433 não existe
+    assert is_us_phone("+55 11 99999-0000") is False
+    assert accept(-23.5, -46.6, None, "OH") == (False, "fora do estado")
+    assert accept(None, None, "4333298894", "OH")[0] is False
+    assert accept(40.4, -82.9, "216-555-0100", "OH")[0] is True
+    lat, lng = state_center("OH"); assert 39 < lat < 41 and -84 < lng < -81

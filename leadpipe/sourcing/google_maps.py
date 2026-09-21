@@ -34,6 +34,7 @@ from urllib.parse import quote, unquote
 from .. import config, db
 from ..normalize import relative_date_to_iso
 from .base import IngestStats, RawLead, ingest_one, record_query
+from .geo import STATE_BBOX, accept, state_center
 
 SEL = {
     "consent_btn": 'button[aria-label*="Accept all"], button[aria-label*="Accept"], form[action*="consent"] button',
@@ -118,16 +119,24 @@ def parse_card_text(text: str) -> dict:
     return out
 
 
-async def _launch(pw, headless: bool):
+async def _launch(pw, headless: bool, state: str | None = None):
+    """Navegador 'morando' no estado pedido: geolocalização forçada + locale en-US.
+    Sem isso o Google Maps puxa resultados perto de onde o usuário realmente está."""
     kwargs = {"headless": headless}
     if config.CHROMIUM_PATH:
         kwargs["executable_path"] = config.CHROMIUM_PATH
     browser = await pw.chromium.launch(**kwargs)
+    geo = None
+    if state and state.upper() in STATE_BBOX:
+        lat, lng = state_center(state)
+        geo = {"latitude": lat, "longitude": lng, "accuracy": 500}
     ctx = await browser.new_context(
-        locale="en-US",
+        locale="en-US", timezone_id="America/New_York",
         viewport={"width": 1280, "height": 900},
         user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
+        geolocation=geo, permissions=["geolocation"] if geo else [],
+        extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
     )
     return browser, ctx
 
@@ -275,7 +284,12 @@ async def scrape_query(con: sqlite3.Connection, ctx, query: str, vertical: str, 
     try:
         for attempt in range(1, config.MAPS_RETRIES + 1):
             try:
-                await page.goto(f"https://www.google.com/maps/search/{quote(query)}?hl=en",
+                # @lat,lng,9z ancora o mapa no estado; gl=us força o país
+                anchor = ""
+                if state and state.upper() in STATE_BBOX:
+                    clat, clng = state_center(state)
+                    anchor = f"/@{clat:.4f},{clng:.4f},9z"
+                await page.goto(f"https://www.google.com/maps/search/{quote(query)}{anchor}?hl=en&gl=us",
                                 timeout=config.MAPS_NAV_TIMEOUT_MS, wait_until="domcontentloaded")
                 await _dismiss_consent(page)
                 await _check_blocked(page)
@@ -329,6 +343,11 @@ async def scrape_query(con: sqlite3.Connection, ctx, query: str, vertical: str, 
                     detail = {}
                 await asyncio.sleep(random.uniform(*config.MAPS_DELAY_RANGE))
             merged = {**card, **detail}
+            if state:
+                ok, why = accept(merged.get("lat"), merged.get("lng"), merged.get("phone"), state)
+                if not ok:
+                    stats.rejected += 1
+                    continue
             raw = RawLead(
                 name=merged["name"],
                 vertical=vertical,
@@ -384,7 +403,7 @@ async def scrape_many(con: sqlite3.Connection, queries: list[tuple[str, str, str
 
     total = IngestStats()
     async with async_playwright() as pw:
-        browser, ctx = await _launch(pw, opts.headless)
+        browser, ctx = await _launch(pw, opts.headless, queries[0][3] if queries else None)
         try:
             for q, vertical, city, state in queries:
                 if not force and already_ran(con, q):
@@ -392,7 +411,7 @@ async def scrape_many(con: sqlite3.Connection, queries: list[tuple[str, str, str
                         progress(q, None, skipped=True)
                     continue
                 st = await scrape_query(con, ctx, q, vertical, city, state, opts)
-                for k in ("found", "inserted", "duplicates", "filled", "skipped", "with_site"):
+                for k in ("found", "inserted", "duplicates", "filled", "skipped", "with_site", "rejected"):
                     setattr(total, k, getattr(total, k) + getattr(st, k))
                 if progress:
                     progress(q, st)

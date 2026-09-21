@@ -206,6 +206,8 @@ def _run_action(body: dict) -> dict:
                 + sum([["--vertical", x.strip()] for x in (body.get("vertical") or "").split(",") if x.strip()], [])
                 + (["--max-places", str(int(body["max_places"]))] if body.get("max_places") else []),
         "expire": ["hero", "expire"],
+        "purge-foreign": ["db", "purge-foreign"],
+        "backup": ["db", "backup"],
     }
     if what == "lead-hero":  # enriquecer (se preciso) + gerar hero de um lead, com template
         lid = str(int(body["lead_id"]))

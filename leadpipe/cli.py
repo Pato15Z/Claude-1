@@ -94,7 +94,7 @@ def source_maps(
     if not cities:
         con_.print("[red]nenhuma cidade encontrada[/red]")
         raise typer.Exit(1)
-    queries = [(f"{vertical} {c} {st}", vertical, c, st) for c in cities]
+    queries = [(f"{vertical} in {c}, {st}, USA", vertical, c, st) for c in cities]
     con_.print(f"{len(queries)} queries para '{vertical}' em {st}" + (" [modo caça: só sem site]" if no_site_only else ""))
     run_id = db.start_run(con, "source", json.dumps({"vertical": vertical, "state": st, "cities": len(cities), "no_site_only": no_site_only}))
 
@@ -364,6 +364,48 @@ def db_export(out: Path = typer.Option(config.DATA_DIR / "leads.csv"), status: O
             w.writerow(rows[0].keys())
             w.writerows([list(r) for r in rows])
     con_.print(f"{len(rows)} leads → {out}")
+
+
+@db_app.command("backup")
+def db_backup():
+    """Copia o banco para data/backups/leadpipe-AAAAmmdd-HHMM.db."""
+    import shutil
+    from datetime import datetime
+    con = _con(); con.execute("PRAGMA wal_checkpoint(FULL)"); con.close()
+    out = config.DATA_DIR / "backups" / f"leadpipe-{datetime.now():%Y%m%d-%H%M}.db"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(config.DB_PATH, out)
+    con_.print(f"backup: {out}")
+    return out
+
+
+@db_app.command("purge-foreign")
+def db_purge_foreign(dry_run: bool = typer.Option(False, help="só lista, não apaga")):
+    """Faz backup e apaga leads fora dos EUA: coordenada fora do estado deles ou telefone não-americano."""
+    from .sourcing.geo import accept
+    con = _con()
+    rows = con.execute("SELECT id, name, state, lat, lng, phone_raw, phone_e164 FROM leads").fetchall()
+    bad = []
+    for r in rows:
+        st = r["state"] or ""
+        ok, why = accept(r["lat"], r["lng"], r["phone_raw"] or r["phone_e164"], st) if st else (True, "sem estado")
+        if not ok:
+            bad.append((r["id"], r["name"], why))
+    _print_table("fora dos EUA" + (" (simulação)" if dry_run else ""), ["id", "nome", "motivo"], [list(b) for b in bad], max_rows=60)
+    if not bad or dry_run:
+        con_.print(f"{len(bad)} leads"); return
+    db_backup()
+    ids = [b[0] for b in bad]
+    with db.tx(con):
+        for t in ("touches", "site_checks", "lead_images", "lead_reviews", "lead_status_history", "clients"):
+            con.execute(f"DELETE FROM {t} WHERE lead_id IN ({','.join(map(str, ids))})")
+        con.execute(f"DELETE FROM leads WHERE id IN ({','.join(map(str, ids))})")
+    import shutil
+    for i in ids:
+        d = config.IMAGES_DIR / str(i)
+        if d.exists():
+            shutil.rmtree(d, ignore_errors=True)
+    con_.print(f"[bold]{len(ids)} leads apagados (backup feito antes).[/bold]")
 
 
 @db_app.command("sql")
@@ -641,7 +683,7 @@ def pipeline(
     con = _con()
     st = state.upper()
     cities = list(city) if city else [c["name"] for c in cities_for_state(st, min_pop, max_cities)]
-    queries = [(f"{vertical} {c} {st}", vertical, c, st) for c in cities]
+    queries = [(f"{vertical} in {c}, {st}, USA", vertical, c, st) for c in cities]
     con_.rule(f"1/4 sourcing: {len(queries)} cidades")
     total = asyncio.run(scrape_many(con, queries, ScrapeOptions(headless=not headful, max_results=max_results),
                                     progress=lambda q, s, skipped=False: con_.print("  " + (f"[dim]pulado[/dim] {q}" if skipped else _stats_line(q, s)))))
@@ -681,7 +723,7 @@ def hunt(
     st = state.upper()
     verticals = list(vertical) if vertical else config.HUNT_VERTICALS
     places = places_for_state(st, by, min_pop, max_places)
-    queries = [(f"{v} {pl} {st}", v, pl, st) for pl in places for v in verticals]
+    queries = [(f"{v} in {pl}, {st}, USA", v, pl, st) for pl in places for v in verticals]
     con_.print(f"[bold]caça em {st}: {len(places)} {by}s × {len(verticals)} verticais = {len(queries)} buscas[/bold] (~20–40 s cada)")
     run_id = db.start_run(con, "hunt", json.dumps({"state": st, "by": by, "places": len(places), "verticals": verticals}))
     before = con.execute("SELECT COUNT(*) FROM leads WHERE site_status='SEM_SITE'").fetchone()[0]
@@ -690,7 +732,7 @@ def hunt(
         if skipped:
             con_.print(f"  [dim]pulado (já rodou):[/dim] {q}")
         else:
-            con_.print(f"  {q}: [green]sem site novos={stats.inserted}[/green]  dup={stats.duplicates}  com site pulados={stats.with_site}")
+            con_.print(f"  {q}: [green]sem site novos={stats.inserted}[/green]  dup={stats.duplicates}  com site pulados={stats.with_site}  fora dos EUA={stats.rejected}")
 
     total = asyncio.run(scrape_many(con, queries, ScrapeOptions(headless=not headful, no_site_only=True), force=force, progress=progress))
     after = con.execute("SELECT COUNT(*) FROM leads WHERE site_status='SEM_SITE'").fetchone()[0]

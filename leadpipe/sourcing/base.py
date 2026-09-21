@@ -44,6 +44,7 @@ class IngestStats:
     filled: int = 0  # campos preenchidos em duplicatas
     skipped: int = 0  # sem nome
     with_site: int = 0  # pulados por já terem site (modo caça)
+    rejected: int = 0   # fora do estado / telefone não-EUA
 
 
 def to_row(raw: RawLead) -> dict[str, Any]:
