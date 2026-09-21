@@ -505,6 +505,36 @@ def hero_one(id: int = typer.Option(..., "--id"), template: Optional[str] = None
     con_.print("pronto")
 
 
+@hero_app.command("batch")
+def hero_batch(ids: Optional[str] = typer.Option(None, help="ids separados por vírgula"),
+               all_no_site: bool = typer.Option(False, help="todos os SEM SITE ainda sem hero"),
+               template: Optional[str] = None, no_gbp: bool = False):
+    """Gera o site de vários leads: busca fotos/avaliações de quem ainda não tem, depois gera todos."""
+    from .enrich.runner import run as enrich_run_
+    from .hero.build import build
+    from .qualify.runner import auto_qualify_no_site
+
+    con = _con()
+    if all_no_site:
+        rows = con.execute("SELECT id FROM leads WHERE site_status='SEM_SITE' AND hero_path IS NULL AND status IN ('QUALIFICADO','ENRIQUECIDO','NOVO')").fetchall()
+        id_list = [r["id"] for r in rows]
+    else:
+        id_list = [int(x) for x in (ids or "").replace(";", ",").split(",") if x.strip()]
+    if not id_list:
+        con_.print("nenhum lead selecionado"); raise typer.Exit(1)
+    for i in id_list:
+        auto_qualify_no_site(con, i)
+    need = [r["id"] for r in con.execute(f"SELECT id FROM leads WHERE enriched_at IS NULL AND id IN ({','.join(map(str, id_list))})")]
+    con_.rule(f"1/2 fotos e avaliações: {len(need)} de {len(id_list)} leads")
+    if need:
+        asyncio.run(enrich_run_(con, redo=True, gbp=not no_gbp, web_search=config.ENRICH_WEB_SEARCH, lead_ids=need,
+                                progress=lambda l, r: con_.print(f"  #{l['id']} {l['name'][:35]}: fotos={r.get('images', 0)} email={'sim' if r.get('email') else 'não'}")))
+    con_.rule(f"2/2 gerando {len(id_list)} sites")
+    r = build(con, include_low_priority=True, rebuild=True, lead_ids=id_list, template=template,
+              progress=lambda l, u, img: con_.print(f"  #{l['id']} {'com foto' if img else 'sem foto'}  {l['name'][:35]}"))
+    con_.print(f"[bold]{r.get('built', 0)} sites gerados. Veja na aba Leads (ver site ↗) ou Checklist.[/bold]")
+
+
 @hero_app.command("templates")
 def hero_templates():
     """Lista os templates disponíveis (pacote + data/templates)."""

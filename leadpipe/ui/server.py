@@ -215,6 +215,14 @@ def _run_action(body: dict) -> dict:
         return {"job": _run_job(args)}
     if what == "lead-enrich":
         return {"job": _run_job(["enrich", "run", "--id", str(int(body["lead_id"]))])}
+    if what == "batch":
+        ids = [str(int(i)) for i in (body.get("ids") or [])]
+        if not ids:
+            return {"error": "selecione pelo menos um lead"}
+        tpl = ["--template", body["template"]] if body.get("template") else []
+        return {"job": _run_job(["hero", "batch", "--ids", ",".join(ids), *tpl])}
+    if what == "batch-all":
+        return {"job": _run_job(["hero", "batch", "--all-no-site"])}
     if what == "lead-full":
         lid = str(int(body["lead_id"]))
         tpl = ["--template", body["template"]] if body.get("template") else []

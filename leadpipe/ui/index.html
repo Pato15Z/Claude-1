@@ -123,7 +123,16 @@ iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12
     <input id="fq" placeholder="buscar nome / cidade / telefone" style="width:auto;min-width:200px;flex:1">
     <span class="muted" id="lcount"></span>
   </div>
-  <div class="card scroll" style="padding:0"><table id="ltable"><thead><tr><th></th><th>nome</th><th>cidade</th><th>site</th><th>etapa</th><th class="hide-m">telefone</th><th class="hide-m">nota</th><th class="hide-m">fotos</th><th>hero</th><th class="hide-m">origem</th></tr></thead><tbody></tbody></table></div>
+  <div class="card" id="selbar" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-color:var(--acc)">
+    <label style="display:flex;align-items:center;gap:6px;font-weight:700"><input type="checkbox" id="selall" style="width:20px;height:20px"> selecionar todos da lista</label>
+    <span class="muted" id="selcount">0 selecionados</span>
+    <select id="seltpl" style="width:auto"></select>
+    <button class="btn ok" id="selgen" data-label="Gerar site dos selecionados">Gerar site dos selecionados</button>
+    <button class="btn sec" id="selgenall" data-label="Gerar site de todos SEM SITE">Gerar site de todos SEM SITE</button>
+    <span class="muted" style="font-size:12px">Gerar = busca fotos e avaliações no Google e monta a página. ~10 s por lead.</span>
+  </div>
+  <div class="card" id="lrun" hidden style="border-color:var(--acc)"><div style="display:flex;gap:10px;align-items:center"><span class="spin"></span><b id="lruntitle">gerando…</b></div><div class="log" id="lrunlog" style="margin-top:8px;max-height:200px"></div></div>
+  <div class="card scroll" style="padding:0"><table id="ltable"><thead><tr><th></th><th></th><th>nome</th><th>cidade</th><th>site</th><th>etapa</th><th class="hide-m">telefone</th><th class="hide-m">nota</th><th class="hide-m">fotos</th><th>hero</th><th class="hide-m">origem</th></tr></thead><tbody></tbody></table></div>
 </section>
 
 <!-- ===================== NOVO LEAD ===================== -->
@@ -309,17 +318,40 @@ async function loadLeads(){
   const q = new URLSearchParams({site, status: $('#fstatus').value, source: $('#fsource').value, q: $('#fq').value});
   const rows = await api('/api/leads?' + q);
   $('#lcount').textContent = rows.length + ' leads';
+  window._leadRows = rows;
   $('#ltable tbody').innerHTML = rows.map(r => `<tr class="row" data-id="${r.id}">
+    <td onclick="event.stopPropagation()"><input type="checkbox" class="selbox" value="${r.id}" style="width:20px;height:20px" ${window._sel && window._sel.has(r.id) ? 'checked' : ''}></td>
     <td>${r.screenshot_path ? `<img class="thumb" src="/shots/${r.id}.png" loading="lazy">` : ''}</td>
     <td><b>${esc(r.name)}</b><div class="muted" style="font-size:11px">#${r.id} · ${esc(r.vertical)}</div></td>
     <td>${esc(r.city||'')}${r.state?', '+esc(r.state):''}</td>
     <td>${r.site_status ? `<span class="pill ${r.site_status}">${r.site_status.replace('SITE_','').replace('_',' ')}</span>` : '<span class="muted">—</span>'}</td>
     <td><span class="pill st">${r.status}</span></td>
     <td class="hide-m">${esc(r.phone_e164||'')}</td><td class="hide-m">${r.rating ?? ''}</td><td class="hide-m">${r.n_images || ''}</td>
-    <td>${r.slug ? `<a href="/hero/${r.slug}/" target="_blank" onclick="event.stopPropagation()">abrir</a>` : ''}</td>
+    <td>${r.slug ? `<a class="btn sec sm" href="/hero/${r.slug}/" target="_blank" onclick="event.stopPropagation()">ver site ↗</a>` : '<span class="muted">—</span>'}</td>
     <td class="hide-m muted">${esc(r.source||'')}</td></tr>`).join('');
   $$('#ltable tr.row').forEach(tr => tr.onclick = () => openLead(+tr.dataset.id));
+  $$('.selbox').forEach(cb => cb.onchange = () => { window._sel = window._sel || new Set(); cb.checked ? window._sel.add(+cb.value) : window._sel.delete(+cb.value); selCount(); });
+  selCount();
+  await fillSelects();
+  if(!$('#seltpl').options.length) $('#seltpl').innerHTML = templates.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
 }
+function selCount(){ const n = (window._sel || new Set()).size; $('#selcount').textContent = n + ' selecionado' + (n === 1 ? '' : 's'); }
+$('#selall').onchange = () => { window._sel = new Set($('#selall').checked ? (window._leadRows || []).map(r => r.id) : []); $$('.selbox').forEach(cb => cb.checked = window._sel.has(+cb.value)); selCount(); };
+async function runBatch(all){
+  const ids = [...(window._sel || [])];
+  if(!all && !ids.length){ toast('marque pelo menos um lead'); return; }
+  const r = await post(all ? {op:'run', what:'batch-all'} : {op:'run', what:'batch', ids, template:$('#seltpl').value});
+  if(r.error){ toast(r.error); return; }
+  $('#lrun').hidden = false; $('#lruntitle').textContent = all ? 'Gerando sites de todos SEM SITE…' : `Gerando ${ids.length} site(s)…`; $('#lrunlog').textContent = 'iniciando…';
+  ['#selgen','#selgenall'].forEach(x => $(x).disabled = true);
+  (async function tick(){
+    const jobs = await api('/api/jobs'); const j = jobs[0]; if(!j) return;
+    $('#lrunlog').textContent = j.log.slice(-3000) || 'iniciando…'; $('#lrunlog').scrollTop = 1e9;
+    if(j.status === 'rodando') setTimeout(tick, 2500);
+    else { $('#lruntitle').textContent = j.status === 'ok' ? 'Pronto. Clique em "ver site ↗" em cada linha.' : 'Falhou: ' + j.status; $('#lrun').querySelector('.spin').style.display = j.status === 'rodando' ? '' : 'none'; ['#selgen','#selgenall'].forEach(x => $(x).disabled = false); window._sel = new Set(); loadLeads(); loadPainel(); }
+  })();
+}
+$('#selgen').onclick = () => runBatch(false); $('#selgenall').onclick = () => runBatch(true);
 async function openLead(id){
   const d = await api('/api/lead/' + id);
   await fillSelects();
@@ -330,7 +362,7 @@ async function openLead(id){
     <div class="muted">#${d.id} · ${esc(d.city||'')}${d.state?', '+esc(d.state):''} · ${esc(d.vertical)} · ${d.rating ?? '—'} ★ (${d.review_count ?? 0}) · ${esc(d.source)}</div>
     <div class="actions">
       ${d.site_status ? `<span class="pill ${d.site_status}">${d.site_status}</span>` : ''} <span class="pill st">${d.status}</span>
-      ${d.slug ? `<a class="btn sec sm" href="/hero/${d.slug}/" target="_blank">ver hero</a>` : ''}
+      ${d.slug ? `<a class="btn sm" href="/hero/${d.slug}/" target="_blank">ver site ↗</a>` : ''}
       ${d.website_url ? `<a class="btn sec sm" href="${esc(d.website_url)}" target="_blank">site atual</a>` : ''}
       ${d.gbp_url ? `<a class="btn sec sm" href="${esc(d.gbp_url)}" target="_blank">Google</a>` : ''}
       ${d.facebook_url ? `<a class="btn sec sm" href="${esc(d.facebook_url)}" target="_blank">Facebook</a>` : ''}
@@ -338,8 +370,8 @@ async function openLead(id){
     <div class="card" style="background:var(--card2)"><h2>Gerar</h2>
       <div class="actions" style="margin:0">
         <select id="d-template" style="width:auto">${tplOpts}</select>
-        <button class="btn ok sm" onclick="runLead('lead-full', ${d.id})">Enriquecer + gerar hero</button>
-        <button class="btn sec sm" onclick="runLead('lead-hero', ${d.id})">Só regerar hero</button>
+        <button class="btn ok sm" onclick="runLead('lead-full', ${d.id})">Gerar site (busca fotos e avaliações)</button>
+        <button class="btn sec sm" onclick="runLead('lead-hero', ${d.id})">Só remontar a página</button>
       </div>
       <div id="d-job" class="muted" style="margin-top:6px;font-size:12px"></div>
     </div>

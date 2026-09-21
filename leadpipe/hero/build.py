@@ -188,16 +188,21 @@ def write_site_scaffold(site_dir: Path, domain: str) -> None:
 
 
 def build(con: sqlite3.Connection, limit: int | None = None, include_low_priority: bool = False, rebuild: bool = False,
-          progress=None, site_status: str | None = None, lead_id: int | None = None, template: str | None = None) -> dict:
+          progress=None, site_status: str | None = None, lead_id: int | None = None, template: str | None = None,
+          lead_ids: list[int] | None = None) -> dict:
     site_dir = config.HERO_SITE_DIR
     write_site_scaffold(site_dir, config.HERO_DOMAIN)
-    where = "status IN ('ENRIQUECIDO','HERO_PRONTO')" if rebuild else "status='ENRIQUECIDO'"
+    # ids explícitos: qualquer lead vivo (regerar hero de quem já foi contatado não mexe no funil)
+    where = ("status NOT IN ('DESCARTADO','PERDIDO')" if lead_ids or lead_id
+             else ("status IN ('ENRIQUECIDO','HERO_PRONTO')" if rebuild else "status='ENRIQUECIDO'"))
     if not include_low_priority:
         where += " AND COALESCE(priority,'normal')<>'baixa'"
     if site_status:
         where += f" AND site_status='{site_status}'"
     if lead_id:
         where += f" AND id={int(lead_id)}"
+    if lead_ids:
+        where += " AND id IN (" + ",".join(str(int(i)) for i in lead_ids) + ")"
     sql = f"SELECT * FROM leads WHERE {where} AND phone_e164 IS NOT NULL ORDER BY CASE site_status WHEN 'SEM_SITE' THEN 0 ELSE 1 END, id"
     if limit:
         sql += f" LIMIT {int(limit)}"
@@ -217,7 +222,8 @@ def build(con: sqlite3.Connection, limit: int | None = None, include_low_priorit
             url = f"https://{data['slug']}.{config.HERO_DOMAIN}"
             db.update_lead(con, lead["id"], slug=data["slug"], hero_url=url, hero_path=str(site_dir / data["slug"]),
                            hero_built_at=db.now_iso(), hero_expires_at=data["expires_at"])
-            db.transition(con, lead["id"], "HERO_PRONTO", note=f"hero {url}")
+            if lead["status"] in ("NOVO", "QUALIFICADO", "ENRIQUECIDO"):
+                db.transition(con, lead["id"], "HERO_PRONTO", note=f"hero {url}")
             built += 1; urls.append(url)
             if progress:
                 progress(lead, url, bool(data["hero_image"]))

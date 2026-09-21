@@ -132,7 +132,8 @@ async def enrich_lead(con: sqlite3.Connection, ctx, lead: sqlite3.Row, sem: asyn
 
 
 async def run(con: sqlite3.Connection, limit: int | None = None, redo: bool = False, web_search: bool | None = None,
-              gbp: bool = True, progress=None, site_status: str | None = None, lead_id: int | None = None) -> dict:
+              gbp: bool = True, progress=None, site_status: str | None = None, lead_id: int | None = None,
+              lead_ids: list[int] | None = None) -> dict:
     from playwright.async_api import async_playwright
 
     web_search = config.ENRICH_WEB_SEARCH if web_search is None else web_search
@@ -142,6 +143,8 @@ async def run(con: sqlite3.Connection, limit: int | None = None, redo: bool = Fa
         sql += f" AND site_status='{site_status}'"
     if lead_id:
         sql += f" AND id={int(lead_id)}"
+    if lead_ids:
+        sql += " AND id IN (" + ",".join(str(int(i)) for i in lead_ids) + ")"
     sql += " ORDER BY CASE site_status WHEN 'SEM_SITE' THEN 0 ELSE 1 END, id"
     if limit:
         sql += f" LIMIT {int(limit)}"
