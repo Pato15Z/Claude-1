@@ -37,7 +37,11 @@ DEFAULT_STYLE = "house"
 FILE_KEYS = [(k, re.compile(v["rx"], re.I)) for k, v in STYLES.items()]
 
 # opções por seção; None = usa o padrão do estilo
-OPTS = ["show_cards", "show_scene", "show_reviews", "show_map", "show_gallery"]
+OPTS = ["show_cards", "show_scene", "show_reviews", "show_map", "show_gallery", "show_labels"]
+# etiquetas sobre a imagem quando o estilo não tem âncoras próprias: 6 pontos
+# espalhados (fração da largura/altura). Ajuste por estilo em Modelos → Imagens
+# (clique na imagem) ou por lead na gaveta.
+GENERIC_ANCHORS = [(0.22, 0.20), (0.78, 0.20), (0.16, 0.50), (0.84, 0.50), (0.26, 0.82), (0.74, 0.82)]
 
 
 def detect_style(vertical: str | None, category: str | None = None, name: str | None = None) -> str:
@@ -64,7 +68,7 @@ def style_image(key: str) -> Path | None:
 def resolve_opts(style: str, opts_json: str | None) -> dict:
     """Mescla o padrão do estilo com o JSON salvo no lead."""
     base = {"show_cards": STYLES.get(style, STYLES[DEFAULT_STYLE])["cards"], "show_scene": True,
-            "show_reviews": True, "show_map": True, "show_gallery": True}
+            "show_reviews": True, "show_map": True, "show_gallery": True, "show_labels": True}
     try:
         saved = json.loads(opts_json) if opts_json else {}
     except Exception:
@@ -72,7 +76,42 @@ def resolve_opts(style: str, opts_json: str | None) -> dict:
     for k in OPTS:
         if k in saved and saved[k] is not None:
             base[k] = bool(saved[k])
+    # extras por lead: posições das etiquetas, textos dos serviços, imagem própria
+    for k in ("labels", "services", "scene_path"):
+        if saved.get(k):
+            base[k] = saved[k]
     return base
+
+
+def style_anchors(key: str) -> list[tuple[float, float]] | None:
+    """Âncoras salvas para o estilo (data/styles/<key>.json), se houver."""
+    f = USER_STYLES_DIR / f"{key}.json"
+    if f.exists():
+        try:
+            pts = json.loads(f.read_text(encoding="utf-8")).get("anchors") or []
+            return [(float(x), float(y)) for x, y in pts]
+        except Exception:
+            return None
+    return None
+
+
+def save_style_anchors(key: str, anchors: list) -> Path:
+    if key not in STYLES:
+        raise ValueError("estilo desconhecido")
+    USER_STYLES_DIR.mkdir(parents=True, exist_ok=True)
+    f = USER_STYLES_DIR / f"{key}.json"
+    f.write_text(json.dumps({"anchors": [[round(float(x), 4), round(float(y), 4)] for x, y in anchors]}), encoding="utf-8")
+    return f
+
+
+def labels_for(services: list[str], anchors: list | None) -> list[dict]:
+    """Etiquetas [{n,text,x,y,side}] a partir de pontos (fração) ou dos genéricos."""
+    pts = list(anchors or GENERIC_ANCHORS)
+    out = []
+    for i, svc in enumerate(services[:6]):
+        x, y = pts[i] if i < len(pts) else GENERIC_ANCHORS[i % len(GENERIC_ANCHORS)]
+        out.append({"n": i + 1, "text": svc, "x": round(x * 100, 1), "y": round(y * 100, 1), "side": "left" if x < 0.5 else "right"})
+    return out
 
 
 def list_styles() -> list[dict]:
@@ -80,7 +119,8 @@ def list_styles() -> list[dict]:
     for k, v in STYLES.items():
         img = style_image(k)
         out.append({"key": k, "label": v["label"], "cards": v["cards"], "has_image": img is not None,
-                    "image": f"/styles/{img.name}" if img else None, "user_image": bool(img and img.parent == USER_STYLES_DIR)})
+                    "image": f"/styles/{img.name}" if img else None, "user_image": bool(img and img.parent == USER_STYLES_DIR),
+                    "anchors": style_anchors(k), "generic": [list(a) for a in GENERIC_ANCHORS]})
     return out
 
 

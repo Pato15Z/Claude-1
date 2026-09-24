@@ -41,6 +41,13 @@ já entrou errado.
   (vertical → categoria → nome), fixável por lead com seções ligáveis
   (`hero_style`, `hero_opts`). Estilo fixado à mão também troca o texto
   (um "pressure washing" que é mudança vira movers).
+- Etiquetas sobre a imagem em todo estilo (referência do usuário). Âncoras:
+  lead (`hero_opts.labels`) → estilo (`data/styles/<k>.json`) → casa por
+  palavra-chave → 6 pontos genéricos. `lead_images.excluded` tira uma foto
+  sem apagar; `source='manual'` sobrevive ao re-enriquecimento.
+- Ligação como canal principal quando só há telefone: o objetivo é a
+  permissão para mandar o vídeo por SMS (consentido) ou email. SMS frio
+  continua fora.
 - Sequência: email (vídeo) d0 → FB d2 → IG d3 → follow-up d6; canal ausente
   é pulado; âncora = primeiro toque enviado.
 - `clients` ganhou provider (wise/stripe), setup_paid_at, last_paid_at;

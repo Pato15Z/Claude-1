@@ -23,7 +23,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from .. import config, db
 from ..normalize import slug as make_slug
 from .content import content_for, place_labels
-from .styles import DEFAULT_STYLE, STYLES, detect_style, resolve_opts, style_image
+from .styles import DEFAULT_STYLE, STYLES, detect_style, labels_for, resolve_opts, style_anchors, style_image
 
 PKG_TEMPLATES = Path(__file__).parent / "templates"
 ASSETS = Path(__file__).parent / "assets"
@@ -88,7 +88,7 @@ def hero_data(con: sqlite3.Connection, lead: sqlite3.Row, site_dir: Path) -> dic
     if out.exists():
         shutil.rmtree(out)
     img_out.mkdir(parents=True)
-    imgs = con.execute("SELECT * FROM lead_images WHERE lead_id=? ORDER BY score DESC, id", (lead["id"],)).fetchall()
+    imgs = con.execute("SELECT * FROM lead_images WHERE lead_id=? AND COALESCE(excluded,0)=0 ORDER BY score DESC, id", (lead["id"],)).fetchall()
     # só fotos horizontais (largura > altura): a faixa lateral é uniforme e sem corte
     work = [i for i in imgs if i["kind"] != "logo" and Path(i["path"]).exists() and (i["width"] or 0) > (i["height"] or 0)]
     logo = next((i for i in imgs if i["kind"] == "logo" and Path(i["path"]).exists()), None)
@@ -111,6 +111,11 @@ def hero_data(con: sqlite3.Connection, lead: sqlite3.Row, site_dir: Path) -> dic
     style = lead["hero_style"] if forced else detect_style(lead["vertical"], lead["category"], lead["name"])
     opts = resolve_opts(style, lead["hero_opts"])
     c = content_for(lead["vertical"], lead["city"], style, force_style=forced)
+    if opts.get("services"):   # textos das etiquetas/cards editados no lead
+        svc = [str(x).strip() for x in opts["services"] if str(x).strip()][:6]
+        if svc:
+            c["services"] = svc
+            c["cards"] = [{"title": t, "desc": (c["cards"][i]["desc"] if i < len(c["cards"]) and c["cards"][i]["title"] == t else "")} for i, t in enumerate(svc)]
     # 3 melhores avaliações: 5 estrelas primeiro, depois as mais longas (até 260 chars)
     revs = con.execute("SELECT author, rating, date_text, text FROM lead_reviews WHERE lead_id=? AND text IS NOT NULL AND length(text) > 15", (lead["id"],)).fetchall()
     revs = sorted((dict(r) for r in revs), key=lambda r: (-(r["rating"] or 0), -min(len(r["text"]), 260)))[:3]
@@ -149,14 +154,24 @@ def hero_data(con: sqlite3.Connection, lead: sqlite3.Row, site_dir: Path) -> dic
     }
     # imagem de referência do estilo (sua, em data/styles, ou a do pacote). No
     # estilo "casa" ela recebe as etiquetas de serviço na cor do negócio.
-    scene_src = style_image(style)
+    custom = Path(opts["scene_path"]) if opts.get("scene_path") else None
+    scene_src = custom if custom and custom.exists() else style_image(style)
     if scene_src is not None and opts["show_scene"]:
         dst = img_out / f"scene{scene_src.suffix}"
         shutil.copy2(scene_src, dst)
         data["scene_image"] = f"img/{dst.name}"
-        if style == DEFAULT_STYLE:
-            data["house_image"] = data["scene_image"]   # nome antigo, para templates seus
-            data["house_labels"] = place_labels(c["services"])
+        data["house_image"] = data["scene_image"]   # nome antigo, para templates seus
+        if opts.get("show_labels", True):
+            # posições: do lead → do estilo (arquivo) → casa por palavra-chave → genéricas
+            if opts.get("labels"):
+                data["house_labels"] = labels_for(c["services"], [(float(x), float(y)) for x, y in opts["labels"]])
+            elif style_anchors(style):
+                data["house_labels"] = labels_for(c["services"], style_anchors(style))
+            elif style == DEFAULT_STYLE and not custom:
+                data["house_labels"] = place_labels(c["services"])
+            else:
+                data["house_labels"] = labels_for(c["services"], None)
+            data["labels_fixed_ratio"] = style == DEFAULT_STYLE and not custom
     data["template"] = lead["hero_template"] or config.HERO_TEMPLATE_DEFAULT
     (out / "hero.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
     return data

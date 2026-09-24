@@ -19,10 +19,12 @@ API (JSON):
   GET  /api/public                     URL pública do túnel, se houver
   POST /api/action  {op, ...}          touch | untouch | reply | status | note | set | run |
                                        create_lead | save_template | delete_template |
-                                       preview | video | style | style_import | settings |
-                                       client_set | client_churn
+                                       preview | video | style | style_import | style_anchors |
+                                       image | settings | client_set | client_churn
   POST /api/video/<id>  (corpo = arquivo)  salva o vídeo do lead em data/videos
   POST /api/style/<estilo> (corpo = imagem) salva a imagem do estilo em data/styles
+  POST /api/image/<id>  (corpo = imagem)   adiciona uma foto sua ao lead
+  POST /api/scene/<id>  (corpo = imagem)   imagem própria do lead para a seção com etiquetas
 Arquivos: /shots/<id>.png, /hero/<slug>/..., /img/<lead>/<file>, /videos/<file>, /preview/<slug>/..., /styles/<file>
 """
 from __future__ import annotations
@@ -44,7 +46,7 @@ from .. import config, db
 from ..qualify.runner import auto_qualify_no_site
 from ..sourcing.base import IngestStats, RawLead, ingest_one
 from ..tracking import reports
-from ..tracking.templates import render as render_touch
+from ..tracking.templates import render as render_touch, render_call
 from ..tracking.touches import daily_queue, log_reply, log_touch, next_touch
 
 HERE = Path(__file__).parent
@@ -104,8 +106,26 @@ def _style_info(lead) -> dict:
     from ..hero.styles import STYLES, detect_style, resolve_opts
     detected = detect_style(lead["vertical"], lead["category"], lead["name"])
     style = lead["hero_style"] if lead["hero_style"] in STYLES else detected
+    from ..hero.content import content_for
+    from ..hero.styles import style_image, style_anchors, GENERIC_ANCHORS
+    from ..hero.content import place_labels
+    opts = resolve_opts(style, lead["hero_opts"])
+    c = content_for(lead["vertical"], lead["city"], style, force_style=lead["hero_style"] in STYLES)
+    services = opts.get("services") or c["services"]
+    custom = Path(opts["scene_path"]) if opts.get("scene_path") else None
+    img = custom if custom and custom.exists() else style_image(style)
+    if opts.get("labels"):
+        anchors = opts["labels"]
+    elif style_anchors(style):
+        anchors = style_anchors(style)
+    elif style == "house" and not custom:
+        anchors = [[l["x"] / 100, l["y"] / 100] for l in place_labels(services)]
+    else:
+        anchors = [list(a) for a in GENERIC_ANCHORS]
     return {"style": style, "style_fixed": lead["hero_style"] in STYLES, "style_detected": detected,
-            "style_label": STYLES[style]["label"], "opts": resolve_opts(style, lead["hero_opts"])}
+            "style_label": STYLES[style]["label"], "opts": opts, "services": services, "default_services": c["services"],
+            "scene_url": (f"/img/{lead['id']}/{custom.name}" if custom and custom.exists() else (f"/styles/{img.name}" if img else None)),
+            "anchors": [list(a) for a in anchors][:len(services)]}
 
 
 def _clients(con):
@@ -148,7 +168,7 @@ def _lead(con, lead_id):
     d = dict(lead)
     d["history"] = [dict(r) for r in con.execute("SELECT from_status, to_status, at, note FROM lead_status_history WHERE lead_id=? ORDER BY at", (lead_id,))]
     d["touches"] = [dict(r) for r in con.execute("SELECT touch_number, channel, sent_at, replied_at, template FROM touches WHERE lead_id=? ORDER BY touch_number", (lead_id,))]
-    d["images"] = [dict(r) for r in con.execute("SELECT path, kind, width, height, source FROM lead_images WHERE lead_id=? ORDER BY score DESC", (lead_id,))]
+    d["images"] = [dict(r) for r in con.execute("SELECT id, path, kind, width, height, source, score, COALESCE(excluded,0) AS excluded FROM lead_images WHERE lead_id=? ORDER BY score DESC, id", (lead_id,))]
     d["reviews"] = [dict(r) for r in con.execute("SELECT author, rating, text FROM lead_reviews WHERE lead_id=? ORDER BY rating DESC LIMIT 5", (lead_id,))]
     done = {t["touch_number"] for t in d["touches"]}
     nxt = next_touch(lead, done) or 4
@@ -158,6 +178,7 @@ def _lead(con, lead_id):
     d["draft"] = render_touch(nxt, lead, first[:10] if first else None, sender)
     d["drafts"] = {n: render_touch(n, lead, first[:10] if first else None, sender) | {"label": config.TOUCH_SCHEDULE[n]["label"], "sent_at": next((t["sent_at"] for t in d["touches"] if t["touch_number"] == n), None)}
                    for n in config.TOUCH_SCHEDULE}
+    d["call"] = render_call(lead, sender)
     d["flags"] = _touch_flags(con, lead_id)
     d.update(_style_info(lead))
     d["client"] = (lambda r: dict(r) if r else None)(con.execute("SELECT * FROM clients WHERE lead_id=?", (lead_id,)).fetchone())
@@ -334,10 +355,46 @@ def _action(con, body: dict) -> dict:
         style = body.get("style") or "auto"
         if style != "auto" and style not in STYLES:
             return {"error": "estilo desconhecido"}
-        opts = {k: bool(v) for k, v in (body.get("opts") or {}).items() if k in OPTS}
+        raw = body.get("opts") or {}
+        opts = {k: bool(v) for k, v in raw.items() if k in OPTS}
+        lead = db.get_lead(con, lid)
+        try:
+            cur = json.loads(lead["hero_opts"]) if lead and lead["hero_opts"] else {}
+        except Exception:
+            cur = {}
+        for k in ("labels", "services", "scene_path"):
+            if k in raw:
+                if raw[k]:
+                    opts[k] = raw[k]
+            elif cur.get(k):
+                opts[k] = cur[k]
         db.update_lead(con, lid, hero_style=None if style == "auto" else style, hero_opts=json.dumps(opts) if opts else None)
         if body.get("regen"):
             return {"ok": True, "job": _run_job(["hero", "build", "--id", str(lid)])}
+    elif op == "image":   # excluir / incluir / capa / apagar uma foto do lead
+        iid = int(body.get("image_id") or 0)
+        row = con.execute("SELECT * FROM lead_images WHERE id=? AND lead_id=?", (iid, lid)).fetchone()
+        if not row:
+            return {"error": "imagem não existe"}
+        what = body.get("action")
+        if what == "exclude":
+            con.execute("UPDATE lead_images SET excluded=1 WHERE id=?", (iid,))
+        elif what == "include":
+            con.execute("UPDATE lead_images SET excluded=0 WHERE id=?", (iid,))
+        elif what == "cover":
+            top = con.execute("SELECT COALESCE(MAX(score),0) FROM lead_images WHERE lead_id=?", (lid,)).fetchone()[0]
+            con.execute("UPDATE lead_images SET kind='work', excluded=0, score=? WHERE id=?", (float(top) + 1, iid))
+        elif what == "delete":
+            con.execute("DELETE FROM lead_images WHERE id=?", (iid,))
+            try:
+                Path(row["path"]).unlink()
+            except OSError:
+                pass
+        else:
+            return {"error": "ação inválida"}
+    elif op == "style_anchors":   # posições padrão das etiquetas de um estilo
+        from ..hero.styles import save_style_anchors
+        save_style_anchors(body.get("style") or "", body.get("anchors") or [])
     elif op == "style_import":
         from ..hero.styles import import_folder, list_styles
         folder = Path(body.get("folder") or "")
@@ -497,6 +554,10 @@ class Handler(SimpleHTTPRequestHandler):
             if u.path == "/api/styles":
                 from ..hero.styles import list_styles
                 return self._json({"styles": list_styles(), "opts": ["show_cards", "show_scene", "show_reviews", "show_map", "show_gallery"]})
+            if u.path == "/api/style_services":
+                from ..hero.content import content_for, STYLE_VERTICAL
+                key = q.get("style") or "house"
+                return self._json({"services": content_for(STYLE_VERTICAL.get(key, "roof cleaning"), "your city", key)["services"]})
             if u.path == "/api/settings":
                 return self._json(db.get_settings(con))
             if u.path == "/api/clients":
@@ -558,6 +619,37 @@ class Handler(SimpleHTTPRequestHandler):
             finally:
                 con.close()
             return self._json({"ok": True, "path": str(out), "url": f"/videos/{out.name}"})
+        if u.path.startswith("/api/image/") or u.path.startswith("/api/scene/"):
+            from io import BytesIO
+            from PIL import Image
+            lid = int(u.path.rsplit("/", 1)[1])
+            data = self.rfile.read(n)
+            try:
+                im = Image.open(BytesIO(data)).convert("RGB")
+            except Exception as e:
+                return self._json({"error": f"imagem inválida: {e}"}, 400)
+            if im.width > 1600:
+                im = im.resize((1600, round(im.height * 1600 / im.width)), Image.LANCZOS)
+            d = config.IMAGES_DIR / str(lid); d.mkdir(parents=True, exist_ok=True)
+            con = db.connect()
+            try:
+                if u.path.startswith("/api/scene/"):
+                    out = d / "scene_custom.jpg"; im.save(out, "JPEG", quality=88)
+                    lead = db.get_lead(con, lid)
+                    try:
+                        cur = json.loads(lead["hero_opts"]) if lead and lead["hero_opts"] else {}
+                    except Exception:
+                        cur = {}
+                    cur["scene_path"] = str(out); cur.pop("labels", None)
+                    db.update_lead(con, lid, hero_opts=json.dumps(cur))
+                    return self._json({"ok": True, "path": str(out), "url": f"/img/{lid}/{out.name}"})
+                import time as _t
+                out = d / f"manual_{int(_t.time())}.jpg"; im.save(out, "JPEG", quality=88)
+                con.execute("INSERT INTO lead_images (lead_id, path, source, width, height, kind, score, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                            (lid, str(out), "manual", im.width, im.height, "work", 50, db.now_iso()))
+                return self._json({"ok": True, "path": str(out), "url": f"/img/{lid}/{out.name}"})
+            finally:
+                con.close()
         if u.path.startswith("/api/style/"):
             from ..hero.styles import save_style_image, list_styles
             key = u.path.rsplit("/", 1)[1]

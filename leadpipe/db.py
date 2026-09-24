@@ -208,6 +208,7 @@ _NEW_COLUMNS = {
               ("hero_template", "TEXT"), ("video_url", "TEXT"), ("video_path", "TEXT"), ("video_done_at", "TEXT"),
               ("hero_style", "TEXT"), ("hero_opts", "TEXT")],
     "clients": [("provider", "TEXT"), ("setup_paid_at", "TEXT"), ("last_paid_at", "TEXT"), ("paid_until", "TEXT")],
+    "lead_images": [("excluded", "INTEGER")],
 }
 
 

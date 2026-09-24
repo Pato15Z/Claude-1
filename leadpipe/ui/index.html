@@ -91,6 +91,25 @@ iframe.prev{width:100%;height:70vh;border:1px solid var(--line);border-radius:12
 .dtabs button.on{background:var(--acc)}
 .dtabs button.done{border:1px solid var(--ok)}
 td input.mini,td select.mini{padding:5px 7px;font-size:13px;width:auto;min-width:80px}
+.led{position:relative;border-radius:10px;overflow:hidden;background:#000;cursor:crosshair;user-select:none;max-width:640px}
+.led img{width:100%;display:block;pointer-events:none}
+.led .dot{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:var(--acc);color:#fff;border:2px solid #fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer}
+.led .dot.on{background:var(--ok);transform:scale(1.25)}
+.led .dot i{position:absolute;left:32px;top:2px;background:rgba(0,0,0,.6);color:#fff;font-style:normal;font-size:11px;padding:2px 6px;border-radius:6px;white-space:nowrap}
+.svcs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.svcs input{padding:7px 9px;font-size:14px}
+.pics{display:flex;gap:8px;flex-wrap:wrap}
+.pic{width:120px;font-size:11px;text-align:center}
+.pic img{width:120px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--line);display:block}
+.pic.ex img{opacity:.35;border-color:var(--bad)}
+.pic.cov img{border-color:var(--ok)}
+.pic .b{display:flex;gap:3px;justify-content:center;margin-top:3px}
+.pic button{background:#2a2f3d;border:0;color:#fff;border-radius:6px;padding:3px 6px;font-size:11px;cursor:pointer}
+.guide h3{font-size:16px;margin:16px 0 6px}
+.guide p,.guide li{font-size:14px;line-height:1.55;color:#d5d9e6}
+.guide ul,.guide ol{padding-left:20px;margin:4px 0}
+.guide table{font-size:13px;margin:6px 0}
+.guide td,.guide th{white-space:normal}
 @media(min-width:900px){
   nav.top{display:flex}nav.bottom{display:none}body{padding-bottom:20px}
   .two{grid-template-columns:1fr 1fr}
@@ -210,6 +229,7 @@ td input.mini,td select.mini{padding:5px 7px;font-size:13px;width:auto;min-width
     <p class="help">Cada negócio recebe a imagem do seu tipo: mudanças, jardinagem, car detailing, pragas, calhas com <b>cards de serviço</b>; handyman, árvores e carpete só a imagem. O tipo é detectado sozinho; troque por lead na gaveta do lead ou no Checklist. Envie a sua imagem em cada quadro, ou importe a pasta de uma vez.</p>
     <div class="actions"><input id="st-folder" placeholder='pasta com as imagens, ex: D:\MPBS\IMGS TEMP' style="width:auto;min-width:260px;flex:1"><button class="btn sec" id="st-import">Importar pasta</button><span class="muted" id="st-info"></span></div>
     <div class="styles" id="styles"></div>
+    <div id="st-editor" style="margin-top:12px"></div>
   </div>
 </section>
 
@@ -236,6 +256,72 @@ td input.mini,td select.mini{padding:5px 7px;font-size:13px;width:auto;min-width
     <h2>Clientes fechados</h2>
     <p class="help">Marque "fechado" no lead (gaveta ou Checklist) e ele aparece aqui. Edite valor do setup, mensal, onde recebe (Wise / Stripe) e se o setup foi pago.</p>
     <div class="scroll"><table id="ctable"><thead><tr><th>cliente</th><th>desde</th><th>setup ($)</th><th>setup pago</th><th>mensal ($)</th><th>recebe por</th><th>última cobrança</th><th>obs</th><th></th></tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<!-- ===================== GUIA ===================== -->
+<section id="tab-guia" hidden>
+  <div class="card guide">
+    <h2>Como prospectar com o leadpipe (do lead ao pagamento)</h2>
+    <p>Regra que organiza tudo: <b>o vídeo é a mensagem, a ligação é só para pedir permissão de mandar o vídeo.</b> Você nunca vende no telefone; você vende no vídeo e fecha na resposta.</p>
+
+    <h3>1. O número americano</h3>
+    <p>Ligar do +55 funciona tecnicamente, mas o dono vê um número estrangeiro e não atende (taxa de atendimento cai muito) e cada minuto custa caro. Você precisa de um número dos EUA. Não é proibido; é o que qualquer vendedor remoto faz.</p>
+    <table><thead><tr><th>Opção</th><th>Custo</th><th>Funciona do Brasil?</th><th>Observação</th></tr></thead><tbody>
+      <tr><td><b>OpenPhone</b> (app no celular e PC)</td><td>~US$ 15–20/mês</td><td>sim, com cartão internacional</td><td>mais simples: número, ligação, SMS e caixa postal num app. Pede verificação do negócio para SMS (registro A2P), ligações liberam na hora.</td></tr>
+      <tr><td><b>Telnyx</b> ou <b>Twilio</b> + app Zoiper</td><td>~US$ 1–2/mês + US$ 0,01/min</td><td>sim</td><td>mais barato, mais técnico (número SIP). Só ligação; SMS exige registro.</td></tr>
+      <tr><td>Google Voice</td><td>grátis</td><td><b>não</b></td><td>exige número americano já existente e IP dos EUA para criar.</td></tr>
+      <tr><td>Skype</td><td>—</td><td>—</td><td>foi desligado em 2025.</td></tr>
+    </tbody></table>
+    <p><b>Spam:</b> número novo às vezes aparece como "Spam Likely" nos celulares. Reduz se: você liga manualmente (nunca discador automático), poucas ligações por dia (30–60), e registra o número no <i>Free Caller Registry</i> (gratuito, ~1 semana). B2B manual para número comercial listado no Google é permitido nos EUA; o que é proibido é robocall e SMS em massa sem consentimento.</p>
+
+    <h3>2. Por onde falar com quem só tem telefone</h3>
+    <ol>
+      <li><b>Ligação</b> (canal principal). Roteiro pronto na gaveta do lead, aba "ligação". Objetivo: "Can I text you a 30-second video?" Com o sim, o SMS deixa de ser frio: foi pedido.</li>
+      <li><b>SMS logo após a ligação</b>, do mesmo número (OpenPhone). Texto pronto na mesma aba. Sem ligação antes, não mande SMS frio: nos EUA é o canal com multa.</li>
+      <li><b>Facebook</b>: páginas de negócio aceitam mensagem de qualquer perfil. Use o seu Facebook normal. O leadpipe acha a página quando existe.</li>
+      <li><b>Instagram</b>: mesma coisa, DM do seu perfil.</li>
+      <li><b>Email</b>: só ~30% têm. Quando tem, vai primeiro (é o toque 1 automático).</li>
+    </ol>
+    <p>Você <b>não precisa de iPhone nem de conta Apple</b>: SMS americano sai do OpenPhone; iMessage não é necessário. WhatsApp não é usado nos EUA para isso.</p>
+
+    <h3>3. Sequência (o app já controla)</h3>
+    <table><thead><tr><th>Dia</th><th>Canal</th><th>O que é</th><th>Onde marcar</th></tr></thead><tbody>
+      <tr><td>0</td><td>ligação → SMS, ou email</td><td>pedir permissão e mandar o vídeo</td><td>Checklist: quadrado "email" (ou marque o toque 1 na gaveta)</td></tr>
+      <tr><td>2</td><td>DM Facebook</td><td>vídeo de novo, "mandei email/texto"</td><td>Checklist: "Facebook"</td></tr>
+      <tr><td>3</td><td>DM Instagram</td><td>idem</td><td>Checklist: "Instagram"</td></tr>
+      <tr><td>6</td><td>email follow-up</td><td>"derrubo a página semana que vem"</td><td>Checklist: "follow-up"</td></tr>
+    </tbody></table>
+    <p>Canal que o lead não tem é pulado. A aba Follow-up mostra quem está devido hoje, com o texto pronto. Respondeu → botão "respondeu" (sai da fila). Sem resposta em 30 dias → "Derrubar heros" em Buscar leads.</p>
+
+    <h3>4. O vídeo (20–30 s, gravado uma vez por lead)</h3>
+    <ol>
+      <li>Abra o site do lead no celular (ou no PC com a janela estreita) e grave a tela rolando: nome, nota, fotos, serviços, botão de ligar.</li>
+      <li>Fale por cima (em inglês, texto fixo): "Hi {nome}, I built this for {negócio} from your Google photos and reviews. Tap to call, your services, your map. If you want it live on your domain this week, reply yes." Nada de proposta longa.</li>
+      <li>Suba no <b>YouTube como "não listado"</b> (grátis, abre em qualquer celular sem login) ou Loom. Cole o link no lead (Checklist → "link do vídeo"). O app usa esse link nos textos.</li>
+    </ol>
+    <p>Por que mandar o vídeo e não só o link do site: o vídeo mostra em 20 s o que o dono não vai clicar para ver; o link vai junto, abaixo.</p>
+
+    <h3>5. Depois do "yes": onde a conversa continua</h3>
+    <p>Onde ele respondeu (SMS, email, DM) é onde você continua; não mude de canal. Mande em uma mensagem: (a) o link de pagamento, (b) o que você precisa dele: domínio que ele quer, email para a conta, logo se tiver. Não marque reunião se ele não pedir: reunião é onde a venda esfria. Marque no app: "fechado (vira cliente)".</p>
+
+    <h3>6. Cobrança: US$ 1.000 + US$ 99/mês</h3>
+    <table><thead><tr><th></th><th>Stripe</th><th>Wise</th></tr></thead><tbody>
+      <tr><td>Serve para</td><td>cartão, recorrência automática dos US$ 99</td><td>transferência bancária (ACH/wire) para os US$ 1.000, se o cliente preferir</td></tr>
+      <tr><td>Como criar</td><td>Stripe → Payment Links → produto "Website" US$ 99/mês + <i>taxa única</i> US$ 1.000 no mesmo link</td><td>Wise → Receber → detalhes da conta em USD (routing + account) e mandar por email</td></tr>
+      <tr><td>Taxa</td><td>~2,9% + US$ 0,30 por cobrança + conversão para BRL</td><td>~0,5–1% na conversão</td></tr>
+      <tr><td>Para o cliente</td><td>um link, paga no celular em 1 minuto, cartão fica salvo</td><td>ele precisa ir no banco dele e digitar dados: fecha menos</td></tr>
+    </tbody></table>
+    <p><b>Recomendação:</b> Stripe Payment Link com setup + assinatura no mesmo link; Wise só como alternativa quando o cliente pede transferência. Depois de pago, anote na aba Fechados (setup pago, mensal, onde recebe). Confirme no seu painel Stripe se a conta brasileira está cobrando em USD (Stripe Brasil liquida em reais, converte sozinho; a habilitação de moeda estrangeira aparece em Configurações → Pagamentos).</p>
+
+    <h3>7. Rotina diária (90 min)</h3>
+    <ol>
+      <li>Leads → selecione 10–20 SEM SITE → "Gerar site dos selecionados".</li>
+      <li>Checklist → abra cada site, ajuste estilo/fotos se precisar, grave o vídeo, cole o link.</li>
+      <li>Ligue (roteiro na gaveta) → SMS/email com o vídeo → marque o quadrado.</li>
+      <li>Follow-up → mande o que está devido hoje.</li>
+      <li>Fechados → anote pagamento.</li>
+    </ol>
   </div>
 </section>
 
@@ -307,6 +393,7 @@ const TABS = [['painel','Painel','M3 13h8V3H3v10zm10 8h8V11h-8v10zM3 21h8v-6H3v6
               ['videos','Checklist','M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'],
               ['fila','Follow-up','M12 2a10 10 0 100 20 10 10 0 000-20zm.5 5H11v6l5.25 3.15.75-1.23-4.5-2.67V7z'],
               ['fechados','Fechados','M12 2L2 7l10 5 10-5-10-5zm0 13l-8-4v3l8 4 8-4v-3l-8 4z'],
+              ['guia','Guia','M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z'],
               ['templates','Modelos','M3 3h18v4H3V3zm0 6h8v12H3V9zm10 0h8v5h-8V9zm0 7h8v5h-8v-5z']];
 let site = '', tab = location.hash.replace('#','') || 'painel', templates = [], verticals = [], styles = [];
 const TOUCH = {1:'email',2:'Facebook',3:'Instagram',4:'follow-up'};
@@ -323,7 +410,7 @@ function nav(){
   $('#navtop').innerHTML = TABS.map(t => mk(t,'t')).join(''); $('#navbot').innerHTML = TABS.map(t => mk(t,'b')).join('');
   $$('nav button').forEach(b => b.onclick = () => go(b.dataset.tab));
 }
-function go(t){ tab = t; location.hash = t; $$('main section').forEach(s => s.hidden = s.id !== 'tab-' + t); nav(); refresh(); window.scrollTo(0,0); }
+function go(t){ tab = t; location.hash = t; $('#drawer').classList.remove('on'); window._lead = null; $$('main section').forEach(s => s.hidden = s.id !== 'tab-' + t); nav(); refresh(); window.scrollTo(0,0); }
 
 // ---------- painel
 async function loadPainel(){
@@ -413,7 +500,7 @@ async function openLead(id){
   const tog = (k, l) => `<label><input type="checkbox" id="o-${k}" ${o[k]?'checked':''}> ${l}</label>`;
   const contactFor = ch => ({email: d.email, facebook_page: d.facebook_url, instagram: d.instagram_url, ligacao: d.phone_e164}[ch] || '');
   const drafts = d.drafts || {};
-  const dtabs = Object.keys(drafts).map(n => `<button class="${+n===d.next_touch?'on':''} ${drafts[n].sent_at?'done':''}" onclick="showDraft(${n})">${drafts[n].sent_at?'✓ ':''}${n}. ${TOUCH[n]}</button>`).join('');
+  const dtabs = `<button onclick="showCall()">☎ ligação + texto</button>` + Object.keys(drafts).map(n => `<button class="${+n===d.next_touch?'on':''} ${drafts[n].sent_at?'done':''}" onclick="showDraft(${n})">${drafts[n].sent_at?'✓ ':''}${n}. ${TOUCH[n]}</button>`).join('');
   window._drafts = drafts;
   $('#dbody').innerHTML = `
     <h3>${esc(d.name)}</h3>
@@ -434,10 +521,20 @@ async function openLead(id){
       </div>
       <div id="d-job" class="muted" style="margin-top:6px;font-size:12px"></div>
     </div>
-    <div class="card" style="background:var(--card2)"><h2>Estilo do site (imagem e seções)</h2>
-      <div class="actions" style="margin:0"><select id="d-style" style="width:auto">${styleOpts(d.style_fixed ? d.style : 'auto')}</select><span class="muted" style="font-size:12px">detectado: ${esc(d.style_label)}</span></div>
-      <div class="tog">${tog('show_cards','cards de serviço')}${tog('show_scene','imagem do tipo')}${tog('show_gallery','fotos do Google')}${tog('show_reviews','avaliações')}${tog('show_map','mapa')}</div>
-      <button class="btn ok sm" onclick="applyStyle(${d.id})">Aplicar e regerar a página</button>
+    <div class="card" style="background:var(--card2)"><h2>Imagem com etiquetas e seções (só deste site)</h2>
+      <div class="actions" style="margin:0"><select id="d-style" style="width:auto">${styleOpts(d.style_fixed ? d.style : 'auto')}</select><span class="muted" style="font-size:12px">detectado: ${esc(d.style_label)}</span>
+        <label class="btn sec sm" style="cursor:pointer">imagem própria <input type="file" accept="image/*" hidden onchange="uploadScene(${d.id}, this)"></label></div>
+      <p class="muted" style="font-size:12px;margin:6px 0">Clique numa bolinha para escolher a etiqueta, depois clique no ponto da imagem onde ela deve ficar. Edite os textos abaixo (vazio = some).</p>
+      <div id="led"></div>
+      <div class="svcs" id="svcs">${[0,1,2,3,4,5].map(i => `<input placeholder="etiqueta ${i+1}" value="${esc((d.services||[])[i]||'')}" oninput="ledText()">`).join('')}</div>
+      <div class="tog">${tog('show_labels','etiquetas sobre a imagem')}${tog('show_cards','cards de serviço abaixo')}${tog('show_scene','mostrar a imagem')}${tog('show_gallery','fotos do Google')}${tog('show_reviews','avaliações')}${tog('show_map','mapa')}</div>
+      <div class="actions" style="margin:0"><button class="btn ok sm" onclick="applyStyle(${d.id})">Aplicar e regerar a página</button><button class="btn sec sm" onclick="ledReset()">voltar ao padrão do estilo</button></div>
+    </div>
+    <div class="card" style="background:var(--card2)"><h2>Fotos do Google usadas no site</h2>
+      <p class="muted" style="font-size:12px;margin:0 0 6px">Verde = capa. Vermelho = fora do site. "capa" põe no topo; "fora" tira sem apagar; "apagar" remove o arquivo. Depois clique "Só remontar a página".</p>
+      <div class="pics">${d.images.filter(i => i.kind !== 'logo').map(i => `<div class="pic ${i.excluded?'ex':''} ${i.kind==='work'&&!i.excluded&&i===d.images.filter(x=>x.kind!=='logo'&&!x.excluded)[0]?'cov':''}"><img src="/img/${d.id}/${i.path.split(/[\\\\/]/).pop()}" title="${i.kind} · ${i.width}x${i.height} · ${esc(i.source||'')}">
+        <div class="b">${i.excluded ? `<button onclick="imgAct(${d.id},${i.id},'include')">voltar</button>` : `<button onclick="imgAct(${d.id},${i.id},'cover')">capa</button><button onclick="imgAct(${d.id},${i.id},'exclude')">fora</button>`}<button onclick="if(confirm('apagar o arquivo?'))imgAct(${d.id},${i.id},'delete')">apagar</button></div></div>`).join('') || '<span class="muted">nenhuma foto ainda</span>'}</div>
+      <div class="actions" style="margin:8px 0 0"><label class="btn sec sm" style="cursor:pointer">adicionar foto minha <input type="file" accept="image/*" hidden onchange="uploadPhoto(${d.id}, this)"></label><span class="muted" style="font-size:12px">só fotos horizontais entram na faixa</span></div>
     </div>
     <div class="kv">
       <div>telefone</div><div>${esc(d.phone_e164||'—')}</div>
@@ -467,12 +564,55 @@ async function openLead(id){
     ${d.touches.length ? '<div class="scroll">' + table(d.touches) + '</div>' : ''}`;
   $('#drawer').classList.add('on');
   window._lead = id;
+  window._call = d.call;
+  ledInit('#led', d.scene_url, d.services || [], d.anchors || []);
   showDraft(d.next_touch);
+}
+// ---------- editor de etiquetas (clique para posicionar)
+let _led = {sel: 0, pts: [], el: null};
+function ledInit(sel, url, services, anchors, inputs){
+  _led = {sel: 0, pts: anchors.map(a => [a[0], a[1]]), el: $(sel), url, inputs: inputs || '#svcs input'};
+  if(!url){ _led.el.innerHTML = '<p class="muted">este estilo ainda não tem imagem. Envie em Modelos → Imagens por tipo, ou "imagem própria" acima.</p>'; return; }
+  _led.el.innerHTML = `<div class="led" id="ledbox"><img src="${url}"></div>`;
+  $('#ledbox').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    while(_led.pts.length <= _led.sel) _led.pts.push([0.5, 0.5]);
+    _led.pts[_led.sel] = [Math.min(.98, Math.max(.02, x)), Math.min(.98, Math.max(.02, y))]; ledDraw(); };
+  ledDraw();
+}
+function ledTexts(){ return $$(_led.inputs).map(i => i.value.trim()); }
+function ledDraw(){
+  const box = $('#ledbox'); if(!box) return;
+  box.querySelectorAll('.dot').forEach(d => d.remove());
+  const texts = ledTexts();
+  texts.forEach((t, i) => { if(!t) return; const p = _led.pts[i] || [0.5, 0.5]; if(!_led.pts[i]) _led.pts[i] = p;
+    const d = document.createElement('div'); d.className = 'dot' + (i === _led.sel ? ' on' : ''); d.style.left = (p[0]*100) + '%'; d.style.top = (p[1]*100) + '%';
+    d.innerHTML = (i+1) + `<i>${esc(t)}</i>`; d.onclick = ev => { ev.stopPropagation(); _led.sel = i; ledDraw(); }; box.appendChild(d); });
+}
+function ledText(){ ledDraw(); }
+function ledReset(){ _led.pts = []; $$(_led.inputs).forEach(i => i.value = ''); _led._reset = true; ledDraw(); toast('ao aplicar, volta ao padrão do estilo'); }
+async function uploadScene(id, input){
+  const f = input.files[0]; if(!f) return; toast('enviando…');
+  const r = await fetch('/api/scene/' + id, {method:'POST', body:f}).then(r => r.json());
+  if(r.error) toast(r.error); else { toast('imagem salva; posicione as etiquetas e aplique'); openLead(id); }
+}
+async function uploadPhoto(id, input){
+  const f = input.files[0]; if(!f) return; toast('enviando…');
+  const r = await fetch('/api/image/' + id, {method:'POST', body:f}).then(r => r.json());
+  if(r.error) toast(r.error); else { toast('foto adicionada; clique "Só remontar a página"'); openLead(id); }
+}
+async function imgAct(id, image_id, action){ const r = await post({op:'image', lead_id:id, image_id, action}); if(r.error) toast(r.error); else openLead(id); }
+function showCall(){
+  const c = window._call; if(!c) return;
+  $$('.dtabs button').forEach((b, i) => b.classList.toggle('on', i === 0));
+  $('#draftbox').innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">Roteiro da ligação (leia, não decore). O objetivo é a permissão para mandar o vídeo.</div><pre>${esc(c.script)}</pre>
+    <div class="muted" style="font-size:12px;margin:8px 0 4px">Texto para mandar logo depois (SMS do número americano, ou email):</div><pre id="calltext">${esc(c.text)}</pre>
+    <div class="actions"><button class="btn sec sm" onclick="navigator.clipboard.writeText(document.getElementById('calltext').innerText).then(()=>toast('copiado'))">copiar texto</button>
+    <button class="btn ok sm" onclick="act({op:'touch', lead_id:${window._lead}, n:1, channel:'ligacao'})">marcar ligação + texto enviado ✓</button></div>`;
 }
 function showDraft(n){
   const d = window._drafts[n]; if(!d) return;
   const id = window._lead;
-  $$('.dtabs button').forEach((b, i) => b.classList.toggle('on', i + 1 === +n));
+  $$('.dtabs button').forEach((b, i) => b.classList.toggle('on', i === +n));
   const contact = {email: 'email', facebook_page: 'DM na página do Facebook', instagram: 'DM no Instagram'}[d.channel] || d.channel;
   $('#draftbox').innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">${n}. ${TOUCH[n]} · ${contact}${d.sent_at ? ' · <span class="good">enviado ' + d.sent_at.slice(0,10) + '</span>' : ''}</div>
     ${d.subject ? `<div><b>Assunto:</b> ${esc(d.subject)}</div>` : ''}
@@ -483,7 +623,10 @@ function showDraft(n){
     </div>`;
 }
 async function applyStyle(id){
-  const opts = {}; ['show_cards','show_scene','show_gallery','show_reviews','show_map'].forEach(k => opts[k] = $('#o-' + k).checked);
+  const opts = {}; ['show_labels','show_cards','show_scene','show_gallery','show_reviews','show_map'].forEach(k => opts[k] = $('#o-' + k).checked);
+  const texts = ledTexts().filter(Boolean);
+  if(_led._reset){ opts.labels = null; opts.services = null; }
+  else { opts.services = texts; opts.labels = _led.pts.slice(0, texts.length).map(p => [+p[0].toFixed(4), +p[1].toFixed(4)]); }
   const r = await post({op:'style', lead_id:id, style:$('#d-style').value, opts, regen:true});
   if(r.error){ toast(r.error); return; }
   toast('regerando a página…');
@@ -627,9 +770,21 @@ async function loadStyleCards(){
   styles = []; await loadStyles();
   $('#styles').innerHTML = styles.map(x => `<div class="stl">
     ${x.has_image ? `<img src="${x.image}?${Date.now()}">` : '<div class="noimg">sem imagem</div>'}
-    <b>${esc(x.label)}</b><div class="muted">${x.key} · ${x.cards ? 'com cards' : 'sem cards'} · ${x.has_image ? (x.user_image ? 'sua imagem' : 'imagem do pacote') : 'envie uma imagem'}</div>
+    <b>${esc(x.label)}</b><div class="muted">${x.key} · ${x.cards ? 'cards abaixo' : 'sem cards'} · ${x.has_image ? (x.user_image ? 'sua imagem' : 'imagem do pacote') : 'envie uma imagem'}${x.anchors ? ' · etiquetas ajustadas' : ''}</div>
     <input type="file" accept="image/*" onchange="uploadStyle('${x.key}', this)">
+    ${x.has_image ? `<button class="btn sec sm" style="width:100%;margin-top:4px" onclick="styleAnchors('${x.key}')">posicionar etiquetas</button>` : ''}
   </div>`).join('');
+}
+async function styleAnchors(key){
+  const x = styles.find(s => s.key === key); const svc = (await api('/api/style_services?style=' + key)).services;
+  $('#st-editor').innerHTML = `<h2>Etiquetas padrão: ${esc(x.label)}</h2><p class="help">Clique na bolinha, depois no ponto da imagem. Vale para todos os sites deste tipo que não tiverem ajuste próprio.</p><div id="stled"></div><div class="svcs" id="stsvcs">${svc.map((t,i) => `<input value="${esc(t)}" readonly>`).join('')}</div><div class="actions"><button class="btn ok sm" onclick="saveAnchors('${key}')">Salvar posições</button><button class="btn sec sm" onclick="$('#st-editor').innerHTML=''">fechar</button></div>`;
+  ledInit('#stled', x.image + '?' + Date.now(), svc, (x.anchors && x.anchors.length ? x.anchors : x.generic).slice(0, svc.length), '#stsvcs input');
+  $('#st-editor').scrollIntoView({behavior:'smooth'});
+}
+async function saveAnchors(key){
+  const n = ledTexts().filter(Boolean).length;
+  const r = await post({op:'style_anchors', style:key, anchors:_led.pts.slice(0, n)});
+  if(r.error) toast(r.error); else { toast('salvo'); $('#st-editor').innerHTML = ''; loadStyleCards(); }
 }
 async function uploadStyle(key, input){
   const f = input.files[0]; if(!f) return; toast('enviando…');
@@ -696,7 +851,7 @@ $('#fstatus').onchange = loadLeads; $('#fsource').onchange = loadLeads; $('#fq')
 $('#dclose').onclick = () => { $('#drawer').classList.remove('on'); window._lead = null; };
 $('#n-save').onclick = () => saveNovo(false); $('#n-save-build').onclick = () => saveNovo(true);
 $('#t-load').onclick = tLoad; $('#t-save').onclick = tSave; $('#t-preview').onclick = tPreview; $('#t-delete').onclick = tDelete;
-function refresh(){ (({painel: loadPainel, leads: loadLeads, novo: fillSelects, templates: loadTemplates, videos: loadVideos, fila: loadQueue, fechados: loadFechados, rodar: loadJobs})[tab] || loadPainel)(); }
+function refresh(){ (({painel: loadPainel, leads: loadLeads, novo: fillSelects, templates: loadTemplates, videos: loadVideos, fila: loadQueue, fechados: loadFechados, guia: () => {}, rodar: loadJobs})[tab] || loadPainel)(); }
 window.addEventListener("hashchange", () => { const t = location.hash.replace("#",""); if(t && t !== tab) go(t); });
 nav(); go(tab); loadJobs();
 </script>

@@ -70,6 +70,7 @@ section h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:va
 .house{padding:14px 0 6px}
 .house .scene.free{aspect-ratio:auto}
 .house .scene.free img{height:auto}
+.house h2{text-align:center}
 .house .scene{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:1344/752;background:#dbe4ee}
 .house .scene img{width:100%;height:100%;object-fit:cover;display:block}
 .lbl{position:absolute;display:flex;align-items:center;gap:6px;transform:translateY(-50%);white-space:nowrap}
@@ -141,20 +142,15 @@ footer{padding:18px 16px 24px;text-align:center;font-size:12px;color:var(--mute)
 
 {% if scene_image and o.get("show_scene", true) %}
 <section class="house"><div class="wrap">
-  {% if house_labels %}
-  <h2>What we do for your home</h2>
-  <div class="scene">
-    <img src="{{ scene_image }}" alt="Services for your home">
-    {% for l in house_labels %}
-      {% if l.side == "right" %}<div class="lbl" style="top:{{ l.y }}%;right:{{ 100 - l.x }}%"><span>{{ l.text }}</span><i>{{ l.n }}</i></div>
+  <h2>{% if style == "house" %}What we do for your home{% else %}What we do{% endif %}</h2>
+  <div class="scene{% if not labels_fixed_ratio %} free{% endif %}">
+    <img src="{{ scene_image }}" alt="{{ vertical_title }} in {{ city }}">
+    {% for l in house_labels or [] %}
+      {% if l.side == "right" %}<div class="lbl" style="top:{{ l.y }}%;right:{{ (100 - l.x)|round(1) }}%"><span>{{ l.text }}</span><i>{{ l.n }}</i></div>
       {% else %}<div class="lbl" style="top:{{ l.y }}%;left:{{ l.x }}%"><i>{{ l.n }}</i><span>{{ l.text }}</span></div>{% endif %}
     {% endfor %}
   </div>
-  <ol class="legend">{% for l in house_labels %}<li><b>{{ l.n }}</b>{{ l.text }}</li>{% endfor %}</ol>
-  {% else %}
-  <h2 style="text-align:center">What we do</h2>
-  <div class="scene free"><img src="{{ scene_image }}" alt="{{ vertical_title }} in {{ city }}"></div>
-  {% endif %}
+  {% if house_labels %}<ol class="legend">{% for l in house_labels %}<li><b>{{ l.n }}</b>{{ l.text }}</li>{% endfor %}</ol>{% endif %}
 </div></section>
 {% endif %}
 

@@ -67,6 +67,13 @@ def test_hero_passes_own_mobile_check(con, monkeypatch, site_server):
     a = _enriched(con, "Bob's Roof Cleaning", "614-555-0101")
     build(con)
     lead = db.get_lead(con, a)
+    # cópia sem recursos externos (fontes do Google, iframe do mapa): sem rede
+    # aqui eles travam o carregamento e o teste vira "timeout" em vez de layout
+    import re as _re
+    src = Path(lead["hero_path"], "index.html").read_text(encoding="utf-8")
+    src = _re.sub(r'<link[^>]+fonts\.g[^>]*>', '', src)
+    src = _re.sub(r'<iframe[^>]*></iframe>', '<div style="width:100%;height:100%"></div>', src)
+    offline = Path(lead["hero_path"], "offline.html"); offline.write_text(src, encoding="utf-8")
     from leadpipe.qualify.render_check import new_browser, render as mobile_render
     from leadpipe.qualify.signals import detect
     from playwright.async_api import async_playwright
@@ -75,7 +82,7 @@ def test_hero_passes_own_mobile_check(con, monkeypatch, site_server):
         async with async_playwright() as pw:
             b = await new_browser(pw)
             try:
-                return await mobile_render(b, Path(lead["hero_path"], "index.html").as_uri(), config.DATA_DIR / "hero_shot.png")
+                return await mobile_render(b, offline.as_uri(), config.DATA_DIR / "hero_shot.png")
             finally:
                 await b.close()
     res = asyncio.run(go())
@@ -157,8 +164,23 @@ def test_styles_detect_cards_and_overrides(con, monkeypatch, tmp_path):
     assert r["built"] == 2 and r["errors"] == 0
     hm = Path(db.get_lead(con, m)["hero_path"], "index.html").read_text()
     hh = Path(db.get_lead(con, h)["hero_path"], "index.html").read_text()
-    assert hm.count('class="cardx"') == 4 and "img/scene.webp" in hm and 'class="lbl"' not in hm and "Local moves" in hm
-    assert 'class="cardx"' not in hh and 'class="chip"' in hh and "img/scene.webp" in hh
+    # etiquetas sobre a imagem em qualquer estilo (como a referência), cards só onde o estilo pede
+    assert hm.count('class="cardx"') == 4 and "img/scene.webp" in hm and hm.count('class="lbl"') == 4 and "Local moves" in hm
+    assert 'class="cardx"' not in hh and 'class="chip"' in hh and "img/scene.webp" in hh and hh.count('class="lbl"') == 4
+    # posições e textos por lead; imagem excluída some da galeria; imagem própria vira a cena
+    r = build(con, lead_ids=[h], include_low_priority=True, opts={"labels": [[0.1, 0.1], [0.9, 0.1], [0.5, 0.9]], "services": ["Decks", "Fences", "Paint"], "show_labels": True})
+    hh = Path(db.get_lead(con, h)["hero_path"], "index.html").read_text()
+    assert hh.count('class="lbl"') == 3 and "top:10.0%;left:10.0%" in hh and "top:10.0%;right:10.0%" in hh and ">Paint<" in hh
+    n_before = hh.count("<figure>")
+    first = con.execute("SELECT id FROM lead_images WHERE lead_id=? AND kind<>'logo' ORDER BY score DESC LIMIT 1", (h,)).fetchone()[0]
+    con.execute("UPDATE lead_images SET excluded=1 WHERE id=?", (first,))
+    build(con, lead_ids=[h], include_low_priority=True)
+    hh = Path(db.get_lead(con, h)["hero_path"], "index.html").read_text()
+    assert hh.count("<figure>") == n_before - 1
+    own = tmp_path / "own.jpg"; Image.new("RGB", (1200, 700), (5, 5, 90)).save(own)
+    build(con, lead_ids=[h], include_low_priority=True, opts={"scene_path": str(own), "show_labels": False})
+    hh = Path(db.get_lead(con, h)["hero_path"], "index.html").read_text()
+    assert "img/scene.jpg" in hh and 'class="lbl"' not in hh
     r = build(con, lead_ids=[m], include_low_priority=True, opts={"show_cards": False, "show_map": False})
     hm = Path(db.get_lead(con, m)["hero_path"], "index.html").read_text()
     assert 'class="cardx"' not in hm and 'class="map"' not in hm and json.loads(db.get_lead(con, m)["hero_opts"])["show_map"] is False

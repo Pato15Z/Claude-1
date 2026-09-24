@@ -80,9 +80,13 @@ Cada lead recebe a imagem de referência do seu tipo e, nos tipos marcados,
 | handyman, tree, carpet | | ✓ |
 | house (roof, pressure, window, house cleaning) | casa com etiquetas apontando telhado, calhas, janelas | |
 
-O tipo é detectado pela vertical (depois categoria do Google e nome); fixe
-por lead na gaveta ou no Checklist, e ligue/desligue cards, imagem, fotos,
-avaliações e mapa. Suas imagens: `lp style import "D:\MPBS\IMGS TEMP"`
+Em todos os estilos as **etiquetas ficam sobre a imagem** (como na referência:
+bolinha + nome do serviço na cor do negócio); cards abaixo são opcionais.
+Posições: clique na imagem em Modelos → "posicionar etiquetas" (padrão do
+tipo) ou na gaveta do lead (só aquele site). Na gaveta também: textos das
+etiquetas, imagem própria, fotos do Google (capa / fora / apagar / adicionar
+a sua), e liga/desliga de etiquetas, cards, imagem, fotos, avaliações, mapa.
+O tipo é detectado pela vertical (depois categoria do Google e nome). Suas imagens: `lp style import "D:\MPBS\IMGS TEMP"`
 (o nome do arquivo diz o estilo: Handyman1.png, Movers9.png...) ou envie em
 Modelos → Imagens por tipo. Ficam em `data/styles/`.
 
@@ -103,7 +107,9 @@ lp hero batch --ids 1,2,3 --style auto
 
 Toque cujo canal o lead não tem é pulado. Checkmarks por canal no
 Checklist; o vídeo usado é o do lead (link ou arquivo) ou o padrão das
-Configurações. SMS fora de escopo.
+Configurações. Quando só há telefone: roteiro de ligação + texto pós-ligação
+na gaveta ("☎ ligação + texto"). A aba **Guia** do app explica número
+americano, canais, vídeo e cobrança (Stripe/Wise).
 
 Esteira inteira em um comando (busca → qualifica → enriquece → heros, focado
 em quem não tem site):

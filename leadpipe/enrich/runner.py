@@ -122,7 +122,7 @@ async def enrich_lead(con: sqlite3.Connection, ctx, lead: sqlite3.Row, sem: asyn
         fields["enriched_at"] = db.now_iso()
         fields["enrich_notes"] = "; ".join(notes)[:500]
     with db.tx(con):
-        con.execute("DELETE FROM lead_images WHERE lead_id=?", (lead["id"],))
+        con.execute("DELETE FROM lead_images WHERE lead_id=? AND COALESCE(source,'')<>'manual'", (lead["id"],))
         for s in saved + logos:
             con.execute("INSERT INTO lead_images (lead_id, path, source, width, height, kind, score, created_at) VALUES (?,?,?,?,?,?,?,?)",
                         (lead["id"], s.path, s.source, s.width, s.height, s.kind, s.score, db.now_iso()))
