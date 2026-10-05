@@ -15,3 +15,8 @@ data/report.html
 data/*.csv
 data/*.json
 tests/fixtures/sites/img/
+
+# segredos do servidor
+deploy/.env
+data/backups/
+data/ui_token.txt

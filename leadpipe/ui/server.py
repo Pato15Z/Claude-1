@@ -735,15 +735,47 @@ def start_tunnel(port: int) -> None:
     threading.Thread(target=reader, daemon=True).start()
 
 
+LOOPBACK = {"127.0.0.1", "localhost", "::1"}
+
+
+def _ensure_token() -> str:
+    """Senha para quando o painel escuta fora do loopback. LEADPIPE_UI_TOKEN manda;
+    sem ela, gera uma e guarda em data/ui_token.txt para não mudar a cada abertura.
+    Gerar é melhor que recusar: o app continua abrindo com dois cliques, e nunca
+    fica sem senha na rede."""
+    import secrets
+    f = config.DATA_DIR / "ui_token.txt"
+    try:
+        saved = f.read_text(encoding="utf-8").strip()
+        if saved:
+            return saved
+    except OSError:
+        pass
+    tok = secrets.token_urlsafe(24)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(tok, encoding="utf-8")
+    try:
+        f.chmod(0o600)
+    except OSError:
+        pass
+    return tok
+
+
 def serve(port: int = 8090, open_browser: bool = True, public: bool = False) -> None:
+    global TOKEN
     config.ensure_dirs()
-    srv = ThreadingHTTPServer(("0.0.0.0" if public else "127.0.0.1", port), Handler)
-    url = f"http://127.0.0.1:{port}/"
-    print(f"painel: {url}   (Ctrl+C para parar)")
+    # Endereço de escuta: LEADPIPE_UI_HOST manda (no container o app precisa escutar
+    # em 0.0.0.0 para o túnel alcançá-lo, sem que o túnel suba aqui dentro). Sem a
+    # variável, vale o comportamento antigo: --public abre para a rede.
+    host = os.environ.get("LEADPIPE_UI_HOST") or ("0.0.0.0" if public else "127.0.0.1")
+    if host not in LOOPBACK and not TOKEN:
+        TOKEN = _ensure_token()
+        print(f"senha gerada (fica em {config.DATA_DIR / 'ui_token.txt'}): {TOKEN}")
+    srv = ThreadingHTTPServer((host, port), Handler)
+    url = f"http://127.0.0.1:{port}/" + (f"?token={TOKEN}" if TOKEN else "")
+    print(f"painel: {url}   (escutando em {host}:{port}, Ctrl+C para parar)")
     if TOKEN:
-        print("senha ativa (LEADPIPE_UI_TOKEN)")
-    elif public:
-        print("AVISO: túnel público sem senha. Defina LEADPIPE_UI_TOKEN para proteger.")
+        print("senha ativa")
     if public:
         threading.Thread(target=start_tunnel, args=(port,), daemon=True).start()
     if open_browser:

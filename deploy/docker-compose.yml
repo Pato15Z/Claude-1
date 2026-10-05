@@ -1,0 +1,31 @@
+# Dois containers: o app e o túnel da Cloudflare.
+#
+# Repare que nenhuma porta é publicada no servidor. O túnel sai de dentro para a
+# Cloudflare e alcança o app pela rede interna do compose, então o leadpipe não
+# tem porta aberta na internet — não há o que varrer nem o que forçar senha.
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: leadpipe-app
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      # Pasta no servidor, não volume nomeado: assim você copia o banco pra cá
+      # com scp e enxerga os arquivos sem precisar entrar no container.
+      - ../data:/data
+    expose:
+      - "8090"
+    # O Chromium é o que consome memória aqui. Se o servidor tiver 2 GB,
+    # baixe QUALIFY_CONCURRENCY/ENRICH_CONCURRENCY no leadpipe/config.py.
+    shm_size: "1gb"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: leadpipe-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - app
