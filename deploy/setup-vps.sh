@@ -18,7 +18,10 @@ say(){ printf '\n\033[1;35m==> %s\033[0m\n' "$*"; }
 
 say "pacotes básicos"
 apt-get update -qq
-apt-get install -y -qq ca-certificates curl git ufw
+# cron não vem em toda imagem mínima do Ubuntu, e sem ele o backup diário
+# seria agendado silenciosamente para nunca rodar.
+apt-get install -y -qq ca-certificates curl git ufw cron openssl
+systemctl enable --now cron >/dev/null 2>&1 || true
 
 say "docker"
 if ! command -v docker >/dev/null; then
