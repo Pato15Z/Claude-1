@@ -79,7 +79,9 @@ MOBILE_UA = (
     "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 )
 # Quantos sites verificar em paralelo. Cada um abre uma aba de browser.
-QUALIFY_CONCURRENCY = 6
+# Cada aba aberta é um Chromium a mais na memória: num servidor de 2 GB,
+# 6 abas estouram. Ajustável sem mexer no código (LEADPIPE_QUALIFY_CONCURRENCY).
+QUALIFY_CONCURRENCY = int(os.environ.get("LEADPIPE_QUALIFY_CONCURRENCY") or 6)
 # Overflow horizontal: scrollWidth > viewport + esta folga (px).
 OVERFLOW_TOLERANCE_PX = 8
 # Fração dos caracteres visíveis com fonte < 12px acima da qual o render é
@@ -110,7 +112,7 @@ AGGREGATOR_DOMAINS = {
 
 # ---------------------------------------------------------- enriquecimento
 IMAGES_DIR = DATA_DIR / "images"
-ENRICH_CONCURRENCY = 4
+ENRICH_CONCURRENCY = int(os.environ.get("LEADPIPE_ENRICH_CONCURRENCY") or 4)
 ENRICH_MAX_IMAGES = 6
 # Busca web (DuckDuckGo) para achar Facebook/Instagram quando o site não tem o link.
 ENRICH_WEB_SEARCH = os.environ.get("LEADPIPE_WEB_SEARCH", "1") != "0"
