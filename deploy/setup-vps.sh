@@ -37,7 +37,7 @@ if ! swapon --show | grep -q .; then
   sysctl -w vm.swappiness=10 >/dev/null
   grep -q '^vm.swappiness' /etc/sysctl.conf || echo 'vm.swappiness=10' >> /etc/sysctl.conf
 fi
-free -h | head -3
+free -h | head -3 || true
 
 say "docker"
 if ! command -v docker >/dev/null; then
@@ -49,7 +49,7 @@ say "firewall: só SSH entra"
 # O app não precisa de porta aberta — o túnel sai de dentro para a Cloudflare.
 ufw allow OpenSSH >/dev/null
 ufw --force enable >/dev/null
-ufw status | head -5
+ufw status | head -5 || true
 
 say "código em $DIR"
 if [ -d "$DIR/.git" ]; then
@@ -65,7 +65,7 @@ say ".env"
 if [ ! -f "$DIR/deploy/.env" ]; then
   cp "$DIR/deploy/.env.example" "$DIR/deploy/.env"
   # Já deixa uma senha forte no lugar, para nunca existir uma janela sem senha.
-  TOK="$(openssl rand -base64 32 | tr -d '\n/+=' | cut -c1-32)"
+  TOK="$(openssl rand -hex 24)"
   sed -i "s|^LEADPIPE_UI_TOKEN=.*|LEADPIPE_UI_TOKEN=$TOK|" "$DIR/deploy/.env"
   chmod 600 "$DIR/deploy/.env"
   echo "criado $DIR/deploy/.env com senha gerada"
@@ -76,8 +76,12 @@ fi
 say "backup diário às 4h"
 chmod +x "$DIR/deploy/backup.sh"
 CRON="0 4 * * * $DIR/deploy/backup.sh >> /var/log/leadpipe-backup.log 2>&1"
-( crontab -l 2>/dev/null | grep -v 'leadpipe/deploy/backup.sh' ; echo "$CRON" ) | crontab -
-crontab -l | tail -1
+TMP="$(mktemp)"
+( crontab -l 2>/dev/null || true ) | grep -v 'leadpipe/deploy/backup.sh' > "$TMP" || true
+echo "$CRON" >> "$TMP"
+crontab "$TMP"
+rm -f "$TMP"
+crontab -l 2>/dev/null | tail -1 || true
 
 cat <<EOF
 
