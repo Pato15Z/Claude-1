@@ -23,6 +23,22 @@ apt-get update -qq
 apt-get install -y -qq ca-certificates curl git ufw cron openssl
 systemctl enable --now cron >/dev/null 2>&1 || true
 
+say "memória de reserva (swap)"
+# Num servidor de 1 ou 2 GB, tanto a instalação do Chromium quanto as abas que
+# ele abre depois estouram a RAM e o processo morre sem explicação. 2 GB de swap
+# no disco custam nada e transformam "travou" em "ficou mais lento".
+if ! swapon --show | grep -q .; then
+  fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile
+  mkswap /swapfile >/dev/null
+  swapon /swapfile
+  grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  # Só usa o disco quando a RAM está mesmo no fim.
+  sysctl -w vm.swappiness=10 >/dev/null
+  grep -q '^vm.swappiness' /etc/sysctl.conf || echo 'vm.swappiness=10' >> /etc/sysctl.conf
+fi
+free -h | head -3
+
 say "docker"
 if ! command -v docker >/dev/null; then
   curl -fsSL https://get.docker.com | sh
