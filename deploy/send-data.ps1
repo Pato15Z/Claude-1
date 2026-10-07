@@ -3,12 +3,18 @@
   deste PC Windows para o servidor, e reinicia o app lá.
 
   Uso, no PowerShell:
-      $ip="SEU.IP.DO.SERVIDOR"; irm https://raw.githubusercontent.com/pato15z/claude-1/claude/tender-fermi-1albbv/deploy/send-data.ps1 | iex
+      irm https://raw.githubusercontent.com/pato15z/claude-1/claude/tender-fermi-1albbv/deploy/send-data.ps1 -OutFile "$env:TEMP\send.ps1"
+      & "$env:TEMP\send.ps1" -ip SEU.IP.DO.SERVIDOR
+
+  Rode a partir do arquivo, nunca com "| iex": num pipeline o PowerShell toma
+  a entrada do teclado, e aí o ssh pergunta a senha e não consegue ler nada.
 
   Por que não pelo Git: o repositório é público e o banco tem os dados de
   todos os leads; além disso o GitHub recusa arquivos acima de 100 MB.
   Por isso vai direto, máquina a máquina.
 #>
+
+param([string]$ip)
 
 $ErrorActionPreference = "Stop"
 function Say($m){ Write-Host "`n==> $m" -ForegroundColor Magenta }
@@ -67,18 +73,27 @@ if ((Read-Host "Feche o app (a janela do app.bat) antes de seguir. Digite S para
 }
 
 # ---------------------------------------------------------------- compactar
-Say "compactando (pode demorar alguns minutos)"
 $tgz = Join-Path $env:TEMP "leadpipe-data.tgz"
-if (Test-Path $tgz) { Remove-Item $tgz -Force }
-tar -czf "$tgz" -C "$parent" "$leaf"
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path $tgz)) { throw "falhou ao compactar" }
+# Compactar 1 GB leva minutos. Se já existe um pacote mais novo que o arquivo
+# mais recente do data/, ele representa os mesmos dados: reaproveita.
+$newest = (Get-ChildItem $dataDir -Recurse -File -ErrorAction SilentlyContinue |
+           Measure-Object LastWriteTime -Maximum).Maximum
+if ((Test-Path $tgz) -and $newest -and (Get-Item $tgz).LastWriteTime -gt $newest) {
+  Say "reaproveitando o pacote já compactado"
+} else {
+  Say "compactando (pode demorar alguns minutos)"
+  if (Test-Path $tgz) { Remove-Item $tgz -Force }
+  tar -czf "$tgz" -C "$parent" "$leaf"
+  if ($LASTEXITCODE -ne 0 -or -not (Test-Path $tgz)) { throw "falhou ao compactar" }
+}
 $tgzMb = [math]::Round(((Get-Item $tgz).Length / 1MB), 0)
 Say "pacote pronto: $tgzMb MB"
 
 # ---------------------------------------------------------------- enviar
 Say "enviando para o servidor — vai pedir a senha do servidor"
 Warn "Enquanto digita a senha a tela não mostra nada. É normal."
-scp "$tgz" "root@${ip}:/opt/leadpipe/upload.tgz"
+$sshOpts = @("-o","StrictHostKeyChecking=accept-new","-o","ConnectTimeout=20")
+scp @sshOpts "$tgz" "root@${ip}:/opt/leadpipe/upload.tgz"
 if ($LASTEXITCODE -ne 0) { throw "falhou ao enviar (senha errada ou servidor fora do ar?)" }
 
 # ---------------------------------------------------------------- instalar lá
@@ -90,7 +105,7 @@ $remote = "cd /opt/leadpipe && rm -rf data.old && if [ -d data ]; then mv data d
           "if [ ! -d data ]; then mv '$leaf' data; fi && " +
           "cd deploy && docker compose restart app && sleep 10 && " +
           "docker compose exec -T app leadpipe db sql 'SELECT COUNT(*) FROM leads'"
-ssh "root@$ip" $remote
+ssh @sshOpts "root@$ip" $remote
 if ($LASTEXITCODE -ne 0) { throw "falhou no servidor — me mande o que apareceu acima" }
 
 Remove-Item $tgz -Force -ErrorAction SilentlyContinue
