@@ -381,6 +381,7 @@ td input.mini,td select.mini{padding:5px 7px;font-size:13px;width:auto;min-width
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onerror="window.QRCode=null"></script>
+<script src="https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2/dist/twilio.min.js" onerror="window.Twilio=null"></script>
 <script>
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const api = p => fetch(p).then(r => r.json());
@@ -565,6 +566,7 @@ async function openLead(id){
   $('#drawer').classList.add('on');
   window._lead = id;
   window._call = d.call;
+  window._phone = d.phone_e164 || '';
   ledInit('#led', d.scene_url, d.services || [], d.anchors || []);
   showDraft(d.next_touch);
 }
@@ -601,13 +603,45 @@ async function uploadPhoto(id, input){
   if(r.error) toast(r.error); else { toast('foto adicionada; clique "Só remontar a página"'); openLead(id); }
 }
 async function imgAct(id, image_id, action){ const r = await post({op:'image', lead_id:id, image_id, action}); if(r.error) toast(r.error); else openLead(id); }
+// ---- discagem pelo navegador (Twilio) -------------------------------------
+// O token vem do servidor e vale 1h; o segredo da chave nunca chega aqui.
+let _tw = null, _twCall = null;
+async function twDevice(){
+  if(_tw) return _tw;
+  if(!window.Twilio) throw new Error('SDK de voz nao carregou');
+  const r = await (await fetch('/api/twilio/token')).json();
+  if(!r.configured) throw new Error('Twilio nao configurado: falta ' + (r.missing||[]).join(', '));
+  _tw = new Twilio.Device(r.token, {codecPreferences:['opus','pcmu']});
+  _tw.on('error', e => { twStatus('erro: ' + (e.message||e)); });
+  await _tw.register();
+  return _tw;
+}
+function twStatus(msg){ const el=$('#twstatus'); if(el) el.textContent = msg; }
+async function dialLead(){
+  const to = window._phone;
+  if(!to) return toast('esse lead nao tem telefone');
+  try{
+    twStatus('conectando...');
+    const dev = await twDevice();
+    _twCall = await dev.connect({params:{To: to}});
+    _twCall.on('accept', () => twStatus('em chamada com ' + to));
+    _twCall.on('disconnect', () => { twStatus('chamada encerrada'); _twCall=null; });
+    _twCall.on('cancel', () => { twStatus('cancelada'); _twCall=null; });
+  }catch(e){ twStatus(''); toast(e.message || 'falha ao ligar'); }
+}
+function hangupLead(){ if(_twCall){ _twCall.disconnect(); _twCall=null; } twStatus('chamada encerrada'); }
+
 function showCall(){
   const c = window._call; if(!c) return;
   $$('.dtabs button').forEach((b, i) => b.classList.toggle('on', i === 0));
   $('#draftbox').innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">Roteiro da ligação (leia, não decore). O objetivo é a permissão para mandar o vídeo.</div><pre>${esc(c.script)}</pre>
     <div class="muted" style="font-size:12px;margin:8px 0 4px">Texto para mandar logo depois (SMS do número americano, ou email):</div><pre id="calltext">${esc(c.text)}</pre>
     <div class="actions"><button class="btn sec sm" onclick="navigator.clipboard.writeText(document.getElementById('calltext').innerText).then(()=>toast('copiado'))">copiar texto</button>
-    <button class="btn ok sm" onclick="act({op:'touch', lead_id:${window._lead}, n:1, channel:'ligacao'})">marcar ligação + texto enviado ✓</button></div>`;
+    <button class="btn ok sm" onclick="act({op:'touch', lead_id:${window._lead}, n:1, channel:'ligacao'})">marcar ligação + texto enviado ✓</button></div>
+    ${window.Twilio && window._phone ? `<div class="actions" style="margin-top:6px">
+      <button class="btn sm" onclick="dialLead()">☎ ligar para ${esc(window._phone)}</button>
+      <button class="btn sec sm" onclick="hangupLead()">desligar</button>
+      <span id="twstatus" class="muted" style="font-size:12px;align-self:center"></span></div>` : ''}`;
 }
 function showDraft(n){
   const d = window._drafts[n]; if(!d) return;

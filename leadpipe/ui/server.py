@@ -17,6 +17,7 @@ API (JSON):
   GET  /api/draft?lead_id=&n=          texto do toque N de um lead
   GET  /api/jobs                       saída dos comandos rodando
   GET  /api/public                     URL pública do túnel, se houver
+  GET  /api/twilio/token               token de voz para discar do navegador (vazio se não configurado)
   POST /api/action  {op, ...}          touch | untouch | reply | status | note | set | run |
                                        create_lead | save_template | delete_template |
                                        preview | video | style | style_import | style_anchors |
@@ -573,6 +574,15 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json(list(reversed(_jobs)))
             if u.path == "/api/public":
                 return self._json(_public)
+            if u.path == "/api/twilio/token":
+                # O segredo da chave fica no servidor; o navegador recebe só um
+                # token de uma hora que serve para discar por este TwiML App.
+                from . import twilio_voice
+                if not twilio_voice.configured():
+                    return self._json({"configured": False, "missing": twilio_voice.missing()})
+                return self._json({"configured": True,
+                                   "token": twilio_voice.access_token(),
+                                   "caller_id": twilio_voice.caller_id()})
             if u.path.startswith("/shots/"):
                 return self._file(config.SCREENSHOT_DIR / Path(u.path).name)
             if u.path.startswith("/styles/"):
