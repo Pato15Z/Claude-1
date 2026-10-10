@@ -95,3 +95,75 @@ def access_token(identity: str = "leadpipe", ttl_s: int = 3600) -> str:
 
 def caller_id() -> str:
     return os.environ.get("TWILIO_CALLER_ID", "")
+
+
+# ------------------------------------------------------------------ texto (SMS)
+#
+# Mandar o link do vídeo pelo mesmo número de onde a ligação saiu, sem sair do
+# painel. A API da Twilio é um POST de formulário com autenticação básica, então
+# não entra biblioteca nenhuma: urllib da biblioteca padrão resolve.
+#
+# Importante, e a regra não muda com registro nenhum: SMS frio para celular
+# americano é ilegal (TCPA, US$500 a US$1.500 por mensagem). Este botão existe
+# para o depois do "pode mandar" dito na ligação. O registro A2P 10DLC libera a
+# entrega pelas operadoras; não libera a mensagem não pedida.
+
+SMS_REQUIRED = ("TWILIO_ACCOUNT_SID", "TWILIO_API_KEY_SID", "TWILIO_API_KEY_SECRET",
+                "TWILIO_CALLER_ID")
+
+
+def sms_configured() -> bool:
+    return all(os.environ.get(k) for k in SMS_REQUIRED)
+
+
+def sms_missing() -> list[str]:
+    return [k for k in SMS_REQUIRED if not os.environ.get(k)]
+
+
+def send_sms(to: str, body: str) -> dict:
+    """Manda um SMS e devolve o que a Twilio respondeu.
+
+    Autentica com a chave de API (SK.../segredo), a mesma da voz, e não com o
+    auth token da conta: se a chave vazar, dá para revogar só ela.
+    """
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    if not sms_configured():
+        raise RuntimeError(f"faltam variáveis do Twilio: {', '.join(sms_missing())}")
+    to = (to or "").strip()
+    body = (body or "").strip()
+    if not to.startswith("+"):
+        raise ValueError(f"número precisa estar em formato internacional (+1...), veio '{to}'")
+    if not body:
+        raise ValueError("mensagem vazia")
+
+    sid = os.environ["TWILIO_ACCOUNT_SID"]
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
+    data = urllib.parse.urlencode({"To": to, "From": caller_id(), "Body": body}).encode()
+    auth = base64.b64encode(
+        f"{os.environ['TWILIO_API_KEY_SID']}:{os.environ['TWILIO_API_KEY_SECRET']}".encode()
+    ).decode("ascii")
+    req = urllib.request.Request(url, data=data, method="POST", headers={
+        "Authorization": f"Basic {auth}",
+        "Content-Type": "application/x-www-form-urlencoded",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            out = json.loads(r.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        # O corpo do erro da Twilio é o que interessa: traz o código (ex. 30034,
+        # número sem registro A2P) e a URL da explicação. Sem isto o painel só
+        # mostraria "HTTP 400" e ninguém saberia o que fazer.
+        try:
+            err = json.loads(e.read() or b"{}")
+        except Exception:
+            err = {}
+        raise RuntimeError(
+            f"Twilio recusou ({e.code}): {err.get('message') or 'sem detalhe'}"
+            + (f" [código {err['code']}]" if err.get("code") else "")
+            + (f" {err['more_info']}" if err.get("more_info") else "")
+        ) from None
+    return {"sid": out.get("sid", ""), "status": out.get("status", ""),
+            "to": out.get("to", to), "price": out.get("price")}

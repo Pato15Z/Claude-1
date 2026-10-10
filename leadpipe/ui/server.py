@@ -18,6 +18,7 @@ API (JSON):
   GET  /api/jobs                       saída dos comandos rodando
   GET  /api/public                     URL pública do túnel, se houver
   GET  /api/twilio/token               token de voz para discar do navegador (vazio se não configurado)
+  POST /api/twilio/sms                 manda SMS pelo número da Twilio e registra em notes
   POST /api/action  {op, ...}          touch | untouch | reply | status | note | set | run |
                                        create_lead | save_template | delete_template |
                                        preview | video | style | style_import | style_anchors |
@@ -582,7 +583,8 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({"configured": False, "missing": twilio_voice.missing()})
                 return self._json({"configured": True,
                                    "token": twilio_voice.access_token(),
-                                   "caller_id": twilio_voice.caller_id()})
+                                   "caller_id": twilio_voice.caller_id(),
+                                   "sms": twilio_voice.sms_configured()})
             if u.path.startswith("/shots/"):
                 return self._file(config.SCREENSHOT_DIR / Path(u.path).name)
             if u.path.startswith("/styles/"):
@@ -670,6 +672,25 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({"error": f"{type(e).__name__}: {e}"}, 400)
             return self._json({"ok": True, "path": str(out), "styles": list_styles()})
         body = json.loads(self.rfile.read(n) or b"{}")
+        if u.path == "/api/twilio/sms":
+            # Manda o texto pelo mesmo numero da ligacao e guarda o que foi dito
+            # em notes: daqui a um mes a unica prova do que o lead recebeu e esta.
+            from . import twilio_voice
+            lid = int(body.get("lead_id") or 0)
+            try:
+                res = twilio_voice.send_sms(body.get("to", ""), body.get("body", ""))
+            except Exception as e:
+                return self._json({"error": str(e)}, 400)
+            if lid:
+                con = db.connect()
+                try:
+                    lead = db.get_lead(con, lid)
+                    prev = (lead["notes"] or "") if lead else ""
+                    line = f"[{db.now_iso()}] SMS -> {res['to']}: {body.get('body','').strip()}"
+                    db.update_lead(con, lid, notes=(prev + "\n" + line).strip())
+                finally:
+                    con.close()
+            return self._json({"ok": True, **res})
         if u.path != "/api/action":
             return self.send_error(404)
         con = db.connect()

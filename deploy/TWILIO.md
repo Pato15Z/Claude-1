@@ -6,8 +6,14 @@ aplicativo, sem o telefone tocar no seu número brasileiro.
 **Ligação não exige registro A2P 10DLC.** Só SMS exige. Então a voz funciona no
 mesmo dia em que você criar a conta; o texto espera o registro (veja o fim).
 
-Custo: **~$1,15/mês** pelo número e **~$0,014 a $0,021 por minuto**. Mil ligações
-de 3 minutos dão algo em torno de **$60**.
+Custo: **~$1,15/mês** pelo número e **~$0,018 por minuto conectado** — são duas
+pernas cobradas ao mesmo tempo, $0,0140 a saída para o celular americano e
+$0,0040 a do navegador. A Twilio arredonda para cima, por minuto inteiro.
+
+Na prática o que pesa é quantas ligações são atendidas, não quantas são
+discadas: tocar e ninguém atender não gera minuto. Varrer os 1.016 leads uma
+vez, com 25% a 30% atendendo e 2 minutos de média, fica em torno de **$15 a
+$25** no mês. O custo do canal é irrelevante; o seu tempo é o custo.
 
 ---
 
@@ -106,12 +112,47 @@ US$1.500 por ligação. Uma pessoa discando um número por vez não é robocall.
 
 ## SMS: o que falta
 
-O mesmo número manda SMS, mas só depois do registro **A2P 10DLC** — exigência
-das operadoras americanas, não da Twilio. Empresa de fora dos EUA registra com
-o identificador do próprio país, e no Brasil isso é o **CNPJ**.
+O botão **"✉ mandar esse texto por SMS"** já está na mesma aba, embaixo do
+roteiro. O texto na tela é editável antes de mandar, e o que foi enviado fica
+guardado no campo de notas do lead.
 
-Enquanto o registro não sai, a entrega do vídeo é por email pedido na ligação,
-ou por DM no Facebook e Instagram.
+Ele só vai entregar depois do registro **A2P 10DLC**. Antes disso a Twilio
+responde com o erro **30034** e o painel mostra a mensagem dela inteira.
 
-E a regra que não muda com registro nenhum: **SMS frio continua ilegal.** Com o
-"pode mandar" dito na ligação, está liberado.
+### O que é o A2P 10DLC (e o que não é)
+
+Não é processo de governo. Quem exige são as três operadoras americanas
+(AT&T, T-Mobile, Verizon), e o cadastro vive no **The Campaign Registry**, uma
+empresa privada. Não existe pedido a órgão público, nem permissão federal a
+conseguir. Não há como pular: toda plataforma que manda SMS para os EUA passa
+por ali, inclusive as que vendem o contrário.
+
+São duas etapas, feitas de dentro do painel da Twilio:
+
+| Etapa | O que é | Prazo típico |
+|---|---|---|
+| **Brand** | identificar a empresa | minutos a 2 dias |
+| **Campaign** | descrever o uso e dar exemplos de mensagem | 1 a 5 dias úteis |
+
+Empresa de fora dos EUA registra com o identificador do próprio país — no
+Brasil, o **CNPJ**. Sem CNPJ existe a campanha de *sole proprietor*, com
+volume baixo; para este uso, volume baixo basta (veja abaixo).
+
+**O que atrasa de verdade:** descrição vaga do uso, mensagens de exemplo
+diferentes do que você vai mandar, e não dizer como o contato deu permissão.
+Escreva que a permissão é verbal, dada na ligação, e cole como exemplo o texto
+exato que o painel gera.
+
+**Toll-free não é atalho.** A verificação dele leva 2 a 3 semanas — mais que o
+10DLC. Short code, 6 a 10 semanas.
+
+### Por que o volume baixo basta
+
+O SMS aqui só sai depois do "pode mandar" dito na ligação. Ou seja, o número de
+mensagens por dia é igual ao número de ligações que foram atendidas e deram
+certo — algo entre 5 e 20. Qualquer faixa de registro, inclusive a mais barata,
+cobre isso com folga. Capacidade não é o gargalo; a ligação é.
+
+E a regra que não muda com registro nenhum: **SMS frio continua ilegal**
+(TCPA, US$500 a US$1.500 por mensagem). Com o "pode mandar" na ligação, está
+liberado — e é por isso que o botão avisa.

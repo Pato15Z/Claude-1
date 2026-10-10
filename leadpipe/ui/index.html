@@ -630,18 +630,36 @@ async function dialLead(){
   }catch(e){ twStatus(''); toast(e.message || 'falha ao ligar'); }
 }
 function hangupLead(){ if(_twCall){ _twCall.disconnect(); _twCall=null; } twStatus('chamada encerrada'); }
+// Manda por SMS o texto que esta na tela (da para editar antes: o <pre> e editavel).
+// So depois do "pode mandar" dito na ligacao - SMS frio para celular americano
+// e ilegal, com ou sem registro A2P.
+async function smsLead(){
+  const to = window._phone; if(!to) return toast('esse lead nao tem telefone');
+  const el = $('#calltext'); const body = (el ? el.innerText : '').trim();
+  if(!body) return toast('texto vazio');
+  if(!confirm('Mandar SMS para ' + to + '?\n\n' + body)) return;
+  twStatus('enviando SMS...');
+  const r = await fetch('/api/twilio/sms', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({lead_id: window._lead, to, body})}).then(r => r.json()).catch(e => ({error:String(e)}));
+  if(r.error){ twStatus(''); return toast(r.error); }
+  twStatus('SMS ' + (r.status || 'enviado') + ' para ' + r.to);
+  toast('SMS enviado');
+}
 
 function showCall(){
   const c = window._call; if(!c) return;
   $$('.dtabs button').forEach((b, i) => b.classList.toggle('on', i === 0));
   $('#draftbox').innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">Roteiro da ligação (leia, não decore). O objetivo é a permissão para mandar o vídeo.</div><pre>${esc(c.script)}</pre>
-    <div class="muted" style="font-size:12px;margin:8px 0 4px">Texto para mandar logo depois (SMS do número americano, ou email):</div><pre id="calltext">${esc(c.text)}</pre>
+    <div class="muted" style="font-size:12px;margin:8px 0 4px">Texto para mandar logo depois (SMS do número americano, ou email). Dá para editar aqui antes de mandar:</div><pre id="calltext" contenteditable="true" spellcheck="false">${esc(c.text)}</pre>
     <div class="actions"><button class="btn sec sm" onclick="navigator.clipboard.writeText(document.getElementById('calltext').innerText).then(()=>toast('copiado'))">copiar texto</button>
     <button class="btn ok sm" onclick="act({op:'touch', lead_id:${window._lead}, n:1, channel:'ligacao'})">marcar ligação + texto enviado ✓</button></div>
     ${window.Twilio && window._phone ? `<div class="actions" style="margin-top:6px">
       <button class="btn sm" onclick="dialLead()">☎ ligar para ${esc(window._phone)}</button>
       <button class="btn sec sm" onclick="hangupLead()">desligar</button>
-      <span id="twstatus" class="muted" style="font-size:12px;align-self:center"></span></div>` : ''}`;
+      <span id="twstatus" class="muted" style="font-size:12px;align-self:center"></span></div>` : ''}
+    ${window._phone ? `<div class="actions" style="margin-top:6px">
+      <button class="btn sm" onclick="smsLead()">✉ mandar esse texto por SMS</button>
+      <span class="muted" style="font-size:11px;align-self:center">só depois do "pode mandar" na ligação</span></div>` : ''}`;
 }
 function showDraft(n){
   const d = window._drafts[n]; if(!d) return;
