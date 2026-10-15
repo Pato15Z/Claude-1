@@ -8,6 +8,7 @@ API (JSON):
   GET  /api/summary                    contagens, região, funil, enriquecimento
   GET  /api/leads?status=&site=&q=     lista de leads
   GET  /api/lead/<id>                  detalhe + histórico + toques + rascunho
+  GET  /api/dialer                     fila de ligação (roteiro pronto, ordenada por avaliações)
   GET  /api/queue                      fila do dia
   GET  /api/checklist                  leads com hero: vídeo / email / Facebook / Instagram / follow-up / respondeu
   GET  /api/templates[?name=x]         lista de templates (ou o HTML de um)
@@ -188,6 +189,49 @@ def _lead(con, lead_id):
     return d
 
 
+# Ordem da fila de discagem. Quem tem mais avaliacoes atende mais e fecha mais:
+# review_count e o melhor sinal de que o negocio esta vivo e faturando. Leads sem
+# telefone ou sem site pronto nao entram, porque na ligacao o site e a oferta.
+DIALER_SQL = """
+    SELECT l.* FROM leads l
+    WHERE l.phone_e164 IS NOT NULL AND l.phone_e164 <> ''
+      AND l.hero_path IS NOT NULL
+      AND l.status NOT IN ('FECHADO','DESCARTADO','RESPONDEU','CALL_AGENDADA')
+      AND NOT EXISTS (SELECT 1 FROM touches t
+                      WHERE t.lead_id = l.id AND t.channel = 'ligacao' AND t.sent_at IS NOT NULL)
+      AND (l.last_dial_at IS NULL OR substr(l.last_dial_at,1,10) < ?)
+    ORDER BY COALESCE(l.review_count,0) DESC, COALESCE(l.rating,0) DESC, l.id
+    LIMIT ?
+"""
+
+
+def _dialer(con, limit: int = 120):
+    """Fila de ligacao pronta para usar: roteiro ja montado, um lead por vez.
+
+    O roteiro vem junto de cada lead de proposito. Se a interface tivesse que
+    pedir o lead ao servidor a cada "proximo", haveria uma espera entre desligar
+    e discar de novo, e e exatamente nessa espera que a pessoa para de ligar.
+    """
+    today = db.now_iso()[:10]
+    sender = _sender(con)
+    out = []
+    for r in con.execute(DIALER_SQL, (today, limit)).fetchall():
+        c = render_call(r, sender)
+        out.append({
+            "id": r["id"], "name": r["name"], "city": r["city"], "state": r["state"],
+            "phone": r["phone_e164"], "vertical": r["vertical"], "category": r["category"],
+            "rating": r["rating"], "review_count": r["review_count"],
+            "hero_url": r["hero_url"], "site_status": r["site_status"],
+            "attempts": r["dial_attempts"] or 0, "last_dial_at": r["last_dial_at"],
+            "script": c["script"], "text": c["text"],
+        })
+    # Quantos faltam no total, nao so nesta pagina: e o numero que diz se vale
+    # abrir o discador hoje. Contado no banco, sem trazer as linhas.
+    inner = DIALER_SQL.replace("SELECT l.*", "SELECT 1").split("ORDER BY")[0]
+    remaining = con.execute(f"SELECT COUNT(*) FROM ({inner})", (today,)).fetchone()[0]
+    return {"leads": out, "remaining": remaining}
+
+
 def _queue(con):
     return [i.__dict__ | {"due_date": str(i.due_date)} for i in daily_queue(con, include_future_days=0)]
 
@@ -342,6 +386,37 @@ def _action(con, body: dict) -> dict:
         if con.execute("SELECT 1 FROM touches WHERE lead_id=? AND touch_number=?", (lid, n)).fetchone():
             return {"ok": True}   # já marcado
         log_touch(con, lid, n, channel, template=body.get("template"))
+    elif op == "dial_outcome":
+        # O resultado de uma ligacao, em um clique, para a fila poder avancar.
+        # Toda tentativa grava last_dial_at: e isso que tira o lead da fila de
+        # hoje e o devolve amanha, em vez de discar duas vezes para quem nao
+        # atendeu de manha.
+        outcome = (body.get("outcome") or "").strip()
+        rot = {
+            "nao_atendeu":   "nao atendeu",
+            "ocupado":       "caiu / ocupado",
+            "pode_mandar":   "atendeu, autorizou o envio",
+            "nao_quer":      "atendeu, nao quer",
+            "numero_errado": "numero errado",
+        }
+        if outcome not in rot:
+            raise ValueError(f"resultado desconhecido: {outcome!r}")
+        lead = db.get_lead(con, lid)
+        if not lead:
+            raise ValueError(f"lead {lid} nao existe")
+        prev = lead["notes"] or ""
+        line = f"[{db.now_iso()}] ligacao: {rot[outcome]}"
+        db.update_lead(con, lid, last_dial_at=db.now_iso(),
+                       dial_attempts=(lead["dial_attempts"] or 0) + 1,
+                       notes=(prev + "\n" + line).strip())
+        if outcome == "pode_mandar":
+            # Falou com o dono e ele deixou mandar: isso e o toque 1 de verdade,
+            # e e o unico caso em que o SMS passa a ser legal para este lead.
+            if not con.execute("SELECT 1 FROM touches WHERE lead_id=? AND touch_number=1", (lid,)).fetchone():
+                log_touch(con, lid, 1, "ligacao")
+        elif outcome == "numero_errado":
+            db.transition(con, lid, "DESCARTADO", "numero errado na ligacao")
+        return {"ok": True, "outcome": outcome}
     elif op == "untouch":   # desmarcar checkmark marcado por engano
         con.execute("DELETE FROM touches WHERE lead_id=? AND touch_number=?", (lid, int(body["n"])))
     elif op == "reply":
@@ -541,6 +616,8 @@ class Handler(SimpleHTTPRequestHandler):
             if u.path.startswith("/api/lead/"):
                 d = _lead(con, int(u.path.rsplit("/", 1)[1]))
                 return self._json(d or {"error": "não existe"}, 200 if d else 404)
+            if u.path == "/api/dialer":
+                return self._json(_dialer(con))
             if u.path == "/api/queue":
                 return self._json(_queue(con))
             if u.path == "/api/checklist":

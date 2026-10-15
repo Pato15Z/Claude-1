@@ -206,7 +206,11 @@ _NEW_COLUMNS = {
     "leads": [("slug", "TEXT"), ("palette_json", "TEXT"), ("logo_path", "TEXT"), ("enriched_at", "TEXT"),
               ("enrich_notes", "TEXT"), ("hero_built_at", "TEXT"), ("hero_path", "TEXT"),
               ("hero_template", "TEXT"), ("video_url", "TEXT"), ("video_path", "TEXT"), ("video_done_at", "TEXT"),
-              ("hero_style", "TEXT"), ("hero_opts", "TEXT")],
+              ("hero_style", "TEXT"), ("hero_opts", "TEXT"),
+              # Discador: a tentativa mais recente e quantas ja houve. Sem isto a
+              # fila devolveria hoje quem nao atendeu ha dez minutos, e nao da para
+              # saber quantas vezes um lead ja foi tentado antes de descartar.
+              ("last_dial_at", "TEXT"), ("dial_attempts", "INTEGER")],
     "clients": [("provider", "TEXT"), ("setup_paid_at", "TEXT"), ("last_paid_at", "TEXT"), ("paid_until", "TEXT")],
     "lead_images": [("excluded", "INTEGER")],
 }
@@ -345,6 +349,7 @@ LEAD_COLUMNS = {
     "priority", "hero_url", "hero_expires_at", "notes", "created_at", "updated_at",
     "slug", "palette_json", "logo_path", "enriched_at", "enrich_notes", "hero_built_at", "hero_path",
     "hero_template", "video_url", "video_path", "video_done_at", "hero_style", "hero_opts",
+    "last_dial_at", "dial_attempts",
 }
 
 

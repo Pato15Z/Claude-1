@@ -249,6 +249,18 @@ td input.mini,td select.mini{padding:5px 7px;font-size:13px;width:auto;min-width
     <div class="scroll" id="queue"></div></div>
 </section>
 
+<!-- ===================== DISCAGEM ===================== -->
+<section id="tab-discar" hidden>
+  <div class="card">
+    <h2>Discagem em fila</h2>
+    <p class="help">Um lead por vez, na ordem de quem tem mais avaliações — é o melhor sinal de
+      negócio vivo e faturando. Ligue, clique no resultado, e o próximo entra na tela sozinho.
+      Quem não atendeu volta para a fila amanhã.</p>
+    <div id="dialerhead"></div>
+    <div id="dialerbody"></div>
+  </div>
+</section>
+
 <!-- ===================== FECHADOS ===================== -->
 <section id="tab-fechados" hidden>
   <div class="grid" id="ctiles"></div>
@@ -392,6 +404,7 @@ const TABS = [['painel','Painel','M3 13h8V3H3v10zm10 8h8V11h-8v10zM3 21h8v-6H3v6
               ['leads','Leads','M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z'],
               ['novo','Adicionar','M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'],
               ['videos','Checklist','M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'],
+              ['discar','Discar','M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z'],
               ['fila','Follow-up','M12 2a10 10 0 100 20 10 10 0 000-20zm.5 5H11v6l5.25 3.15.75-1.23-4.5-2.67V7z'],
               ['fechados','Fechados','M12 2L2 7l10 5 10-5-10-5zm0 13l-8-4v3l8 4 8-4v-3l-8 4z'],
               ['guia','Guia','M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z'],
@@ -617,8 +630,8 @@ async function twDevice(){
   return _tw;
 }
 function twStatus(msg){ const el=$('#twstatus'); if(el) el.textContent = msg; }
-async function dialLead(){
-  const to = window._phone;
+async function dialLead(){ return dialNumber(window._phone); }
+async function dialNumber(to){
   if(!to) return toast('esse lead nao tem telefone');
   try{
     twStatus('conectando...');
@@ -633,14 +646,15 @@ function hangupLead(){ if(_twCall){ _twCall.disconnect(); _twCall=null; } twStat
 // Manda por SMS o texto que esta na tela (da para editar antes: o <pre> e editavel).
 // So depois do "pode mandar" dito na ligacao - SMS frio para celular americano
 // e ilegal, com ou sem registro A2P.
-async function smsLead(){
-  const to = window._phone; if(!to) return toast('esse lead nao tem telefone');
-  const el = $('#calltext'); const body = (el ? el.innerText : '').trim();
+async function smsLead(){ return sendSms(window._phone, window._lead, 'calltext'); }
+async function sendSms(to, leadId, elId){
+  if(!to) return toast('esse lead nao tem telefone');
+  const el = document.getElementById(elId); const body = (el ? el.innerText : '').trim();
   if(!body) return toast('texto vazio');
   if(!confirm('Mandar SMS para ' + to + '?\n\n' + body)) return;
   twStatus('enviando SMS...');
   const r = await fetch('/api/twilio/sms', {method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({lead_id: window._lead, to, body})}).then(r => r.json()).catch(e => ({error:String(e)}));
+    body: JSON.stringify({lead_id: leadId, to, body})}).then(r => r.json()).catch(e => ({error:String(e)}));
   if(r.error){ twStatus(''); return toast(r.error); }
   twStatus('SMS ' + (r.status || 'enviado') + ' para ' + r.to);
   toast('SMS enviado');
@@ -903,7 +917,88 @@ $('#fstatus').onchange = loadLeads; $('#fsource').onchange = loadLeads; $('#fq')
 $('#dclose').onclick = () => { $('#drawer').classList.remove('on'); window._lead = null; };
 $('#n-save').onclick = () => saveNovo(false); $('#n-save-build').onclick = () => saveNovo(true);
 $('#t-load').onclick = tLoad; $('#t-save').onclick = tSave; $('#t-preview').onclick = tPreview; $('#t-delete').onclick = tDelete;
-function refresh(){ (({painel: loadPainel, leads: loadLeads, novo: fillSelects, templates: loadTemplates, videos: loadVideos, fila: loadQueue, fechados: loadFechados, guia: () => {}, rodar: loadJobs})[tab] || loadPainel)(); }
+// ---------- discagem em fila ------------------------------------------------
+// A fila inteira vem numa requisicao, com o roteiro de cada lead ja montado. O
+// motivo e ritmo: se cada "proximo" tivesse que esperar o servidor, a pausa
+// entre desligar e discar de novo e onde a pessoa para de ligar.
+let _dq = [], _di = 0, _dRemaining = 0;
+
+async function loadDialer(){
+  $('#dialerhead').innerHTML = '<p class="muted">carregando a fila…</p>';
+  $('#dialerbody').innerHTML = '';
+  const r = await api('/api/dialer');
+  _dq = r.leads || []; _di = 0; _dRemaining = r.remaining || 0;
+  renderDialer();
+}
+
+function renderDialer(){
+  const head = $('#dialerhead'), body = $('#dialerbody');
+  if(!_dq.length){
+    head.innerHTML = '';
+    body.innerHTML = `<p class="muted">Nada para ligar agora. Isso quer dizer uma de três coisas:
+      todos os leads com telefone e site pronto já foram ligados, todos já foram tentados hoje
+      (voltam amanhã), ou os sites ainda não foram gerados.</p>`;
+    return;
+  }
+  if(_di >= _dq.length){
+    head.innerHTML = '';
+    body.innerHTML = `<p><b>Fim desta leva.</b> Você passou por ${_dq.length} leads.
+      ${_dRemaining > _dq.length ? `Ainda faltam cerca de ${_dRemaining - _dq.length} na fila.` : ''}</p>
+      <div class="actions"><button class="btn sm" onclick="loadDialer()">carregar mais</button></div>`;
+    return;
+  }
+  const c = _dq[_di];
+  const stars = c.rating ? `${(+c.rating).toFixed(1)}★ · ${c.review_count||0} avaliações` : 'sem avaliações';
+  head.innerHTML = `<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px">
+      <b style="font-size:17px">${esc(c.name)}</b>
+      <span class="muted">${esc(c.city||'')}${c.state ? ', '+esc(c.state) : ''} · ${esc(c.vertical||c.category||'')}</span>
+      <span class="good">${stars}</span>
+      ${c.attempts ? `<span class="bad">${c.attempts}ª tentativa</span>` : ''}
+    </div>
+    <div class="muted" style="font-size:12px">${_di+1} de ${_dq.length} nesta leva · ${_dRemaining} na fila total
+      ${c.hero_url ? ` · <a href="${esc(c.hero_url)}" target="_blank" rel="noopener">ver o site que você fez</a>` : ''}</div>`;
+
+  body.innerHTML = `
+    <div class="actions" style="margin:10px 0">
+      ${window.Twilio ? `<button class="btn" onclick="dialNumber('${esc(c.phone)}')">☎ ligar para ${esc(c.phone)}</button>
+      <button class="btn sec sm" onclick="hangupLead()">desligar</button>` :
+      `<b>${esc(c.phone)}</b> <span class="muted" style="font-size:12px">(o botão de ligar aparece quando o Twilio estiver configurado)</span>`}
+      <span id="twstatus" class="muted" style="font-size:12px;align-self:center"></span>
+    </div>
+    <pre>${esc(c.script)}</pre>
+    <div class="muted" style="font-size:12px;margin:8px 0 4px">Texto para mandar depois do "pode mandar". Editável:</div>
+    <pre id="dialtext" contenteditable="true" spellcheck="false">${esc(c.text)}</pre>
+    <div class="actions" style="margin-top:6px">
+      <button class="btn sec sm" onclick="sendSms('${esc(c.phone)}', ${c.id}, 'dialtext')">✉ mandar por SMS</button>
+      <button class="btn sec sm" onclick="navigator.clipboard.writeText(document.getElementById('dialtext').innerText).then(()=>toast('copiado'))">copiar</button>
+    </div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+    <div class="muted" style="font-size:12px;margin-bottom:6px">Como terminou? (um clique passa para o próximo)</div>
+    <div class="actions">
+      <button class="btn ok" onclick="dialOutcome('pode_mandar')">atendeu e autorizou ✓</button>
+      <button class="btn sec" onclick="dialOutcome('nao_atendeu')">não atendeu</button>
+      <button class="btn sec" onclick="dialOutcome('ocupado')">caiu / ocupado</button>
+      <button class="btn sec" onclick="dialOutcome('nao_quer')">atendeu, não quer</button>
+      <button class="btn sec" onclick="dialOutcome('numero_errado')">número errado</button>
+      <button class="btn sec sm" onclick="dialSkip()">pular sem registrar</button>
+    </div>`;
+  twStatus('');
+}
+
+async function dialOutcome(outcome){
+  const c = _dq[_di]; if(!c) return;
+  if(_twCall){ _twCall.disconnect(); _twCall = null; }   // nunca passa de lead com a linha aberta
+  const r = await post({op:'dial_outcome', lead_id:c.id, outcome});
+  if(r.error) return toast(r.error);
+  _dRemaining = Math.max(0, _dRemaining - 1);
+  _di++; renderDialer(); window.scrollTo(0,0);
+}
+function dialSkip(){
+  if(_twCall){ _twCall.disconnect(); _twCall = null; }
+  _di++; renderDialer(); window.scrollTo(0,0);
+}
+
+function refresh(){ (({painel: loadPainel, leads: loadLeads, novo: fillSelects, templates: loadTemplates, videos: loadVideos, fila: loadQueue, discar: loadDialer, fechados: loadFechados, guia: () => {}, rodar: loadJobs})[tab] || loadPainel)(); }
 window.addEventListener("hashchange", () => { const t = location.hash.replace("#",""); if(t && t !== tab) go(t); });
 nav(); go(tab); loadJobs();
 </script>

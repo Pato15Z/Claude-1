@@ -34,6 +34,16 @@ navegador  --(SDK de voz)-->  Twilio  --(o que eu faço?)-->  Twilio Function
  leadpipe (assina)                                           disca o lead
 ```
 
+O que o SDK faz, por dentro (apurado na versão 2.18.5 publicada): abre um
+WebSocket em `wss://voice-js.<edge>.twilio.com/signal`, manda `listen` com o
+token, `register` para poder receber, e `invite` com a oferta WebRTC e o número
+de destino. A mídia é WebRTC padrão; só a sinalização é própria da Twilio.
+
+A consequência prática: **durante a ligação o navegador não fala com o seu
+servidor em nenhum momento.** O leadpipe só assina o token, antes. É por isso
+que o firewall pode ficar fechado — e é por isso que trocar de operadora depois
+mexe em pouca coisa aqui dentro.
+
 ---
 
 ## Passo a passo no painel da Twilio
@@ -89,9 +99,17 @@ cd /opt/leadpipe/deploy && docker compose up -d app
 ```
 
 ### 6. Usar
-Abra um lead → aba **☎ ligação + texto**. O botão **"ligar para +1..."**
-aparece ao lado do roteiro. O navegador vai pedir permissão do microfone na
-primeira vez.
+Duas formas.
+
+**Discagem em fila** (aba **Discar**) — é a que você vai usar de verdade. Um lead
+por vez, na ordem de quem tem mais avaliações, com o roteiro na tela. Liga,
+clica no resultado, o próximo entra sozinho. Quem não atendeu volta amanhã; quem
+autorizou o envio sai da fila e vira o toque 1.
+
+**Lead avulso** — abra o lead → aba **☎ ligação + texto**, para quando você quer
+ligar para alguém específico fora da fila.
+
+O navegador vai pedir permissão do microfone na primeira vez.
 
 Se o botão não aparecer: ou falta alguma variável (veja em
 `/api/twilio/token`), ou o lead não tem telefone, ou o SDK não carregou.
