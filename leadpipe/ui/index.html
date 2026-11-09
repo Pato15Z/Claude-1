@@ -281,22 +281,23 @@ td input.mini,td select.mini{padding:5px 7px;font-size:13px;width:auto;min-width
     <h3>1. O número americano</h3>
     <p>Ligar do +55 funciona tecnicamente, mas o dono vê um número estrangeiro e não atende (taxa de atendimento cai muito) e cada minuto custa caro. Você precisa de um número dos EUA. Não é proibido; é o que qualquer vendedor remoto faz.</p>
     <table><thead><tr><th>Opção</th><th>Custo</th><th>Funciona do Brasil?</th><th>Observação</th></tr></thead><tbody>
-      <tr><td><b>OpenPhone</b> (app no celular e PC)</td><td>~US$ 15–20/mês</td><td>sim, com cartão internacional</td><td>mais simples: número, ligação, SMS e caixa postal num app. Pede verificação do negócio para SMS (registro A2P), ligações liberam na hora.</td></tr>
-      <tr><td><b>Telnyx</b> ou <b>Twilio</b> + app Zoiper</td><td>~US$ 1–2/mês + US$ 0,01/min</td><td>sim</td><td>mais barato, mais técnico (número SIP). Só ligação; SMS exige registro.</td></tr>
-      <tr><td>Google Voice</td><td>grátis</td><td><b>não</b></td><td>exige número americano já existente e IP dos EUA para criar.</td></tr>
+      <tr><td><b>Twilio, dentro do leadpipe</b> (o que está montado)</td><td>US$ 1,15/mês + ~US$ 0,018/min conectado</td><td>sim</td><td>liga pelo navegador na aba <b>Discar</b>, sem celular e sem outro app. A ligação funciona no primeiro dia; o SMS espera o registro A2P (passo a passo em <code>deploy/A2P.md</code>). Configuração em <code>deploy/TWILIO.md</code>.</td></tr>
+      <tr><td>OpenPhone (app no celular e PC)</td><td>~US$ 15–20/mês</td><td>sim, com cartão internacional</td><td>alternativa se não quiser a Twilio; também exige o mesmo registro A2P para SMS.</td></tr>
+      <tr><td>GoHighLevel</td><td>US$ 97–497/mês</td><td>sim</td><td>é uma interface em cima da mesma Twilio, com o mesmo registro A2P, e ainda pede documento e selfie para você poder ligar. Não ganha nada aqui.</td></tr>
+      <tr><td>Google Voice</td><td>grátis</td><td><b>não</b></td><td>só para residente nos EUA, verificado por um número americano que não seja VoIP, e o plano grátis proíbe uso comercial.</td></tr>
       <tr><td>Skype</td><td>—</td><td>—</td><td>foi desligado em 2025.</td></tr>
     </tbody></table>
-    <p><b>Spam:</b> número novo às vezes aparece como "Spam Likely" nos celulares. Reduz se: você liga manualmente (nunca discador automático), poucas ligações por dia (30–60), e registra o número no <i>Free Caller Registry</i> (gratuito, ~1 semana). B2B manual para número comercial listado no Google é permitido nos EUA; o que é proibido é robocall e SMS em massa sem consentimento.</p>
+    <p><b>Spam:</b> número novo às vezes aparece como "Spam Likely" nos celulares. Reduz se: você liga manualmente (nunca discador automático), poucas ligações por dia (30–60), e registra o número no <i>Free Caller Registry</i> (gratuito, ~1 semana) e associa o número ao perfil aprovado na Twilio, o que ativa o SHAKEN/STIR (veja <code>deploy/A2P.md</code>). B2B manual para número comercial listado no Google é permitido nos EUA; o que é proibido é robocall e SMS em massa sem consentimento.</p>
 
     <h3>2. Por onde falar com quem só tem telefone</h3>
     <ol>
-      <li><b>Ligação</b> (canal principal). Roteiro pronto na gaveta do lead, aba "ligação". Objetivo: "Can I text you a 30-second video?" Com o sim, o SMS deixa de ser frio: foi pedido.</li>
-      <li><b>SMS logo após a ligação</b>, do mesmo número (OpenPhone). Texto pronto na mesma aba. Sem ligação antes, não mande SMS frio: nos EUA é o canal com multa.</li>
+      <li><b>Ligação</b> (canal principal). Aba <b>Discar</b>: um lead por vez, roteiro na tela, botão de ligar. Objetivo: "Can I text you a 30-second video of it from {sua empresa}?" Com o sim, o SMS deixa de ser frio: foi pedido. Clique "atendeu e autorizou".</li>
+      <li><b>SMS logo após a ligação</b>, do mesmo número, pelo botão na mesma tela. O texto já sai com o nome da empresa e "Reply STOP". Sem o sim na ligação, não mande SMS: nos EUA é o canal com multa, com registro ou sem.</li>
       <li><b>Facebook</b>: páginas de negócio aceitam mensagem de qualquer perfil. Use o seu Facebook normal. O leadpipe acha a página quando existe.</li>
       <li><b>Instagram</b>: mesma coisa, DM do seu perfil.</li>
       <li><b>Email</b>: só ~30% têm. Quando tem, vai primeiro (é o toque 1 automático).</li>
     </ol>
-    <p>Você <b>não precisa de iPhone nem de conta Apple</b>: SMS americano sai do OpenPhone; iMessage não é necessário. WhatsApp não é usado nos EUA para isso.</p>
+    <p>Você <b>não precisa de iPhone nem de conta Apple</b>: SMS americano sai da Twilio, pelo painel; iMessage não é necessário. WhatsApp não é usado nos EUA para isso.</p>
 
     <h3>3. Sequência (o app já controla)</h3>
     <table><thead><tr><th>Dia</th><th>Canal</th><th>O que é</th><th>Onde marcar</th></tr></thead><tbody>
@@ -331,10 +332,14 @@ td input.mini,td select.mini{padding:5px 7px;font-size:13px;width:auto;min-width
     <ol>
       <li>Leads → selecione 10–20 SEM SITE → "Gerar site dos selecionados".</li>
       <li>Checklist → abra cada site, ajuste estilo/fotos se precisar, grave o vídeo, cole o link.</li>
-      <li>Ligue (roteiro na gaveta) → SMS/email com o vídeo → marque o quadrado.</li>
+      <li><b>Discar</b> → ligue em sequência; um clique no resultado passa para o próximo. Quem não atendeu volta amanhã; quem disse não sai da fila.</li>
       <li>Follow-up → mande o que está devido hoje.</li>
       <li>Fechados → anote pagamento.</li>
     </ol>
+
+    <h3>8. O que esperar (número de quem fez)</h3>
+    <p>Referência mais honesta encontrada: Sam Robinson, web designer solo de Vermont, sem link de afiliado para vender. Foram <b>~3.000 ligações no primeiro ano para ~30 clientes</b>, ou seja, <b>~1% por discagem</b> e 3–4% das ligações atendidas. Ele cobra <b>assinatura de US$ 150–300/mês com US$ 0 de entrada</b>; com 30 clientes, isso dava ~US$ 4.000/mês recorrentes.</p>
+    <p>Aplicado aqui: <b>1.016 leads na primeira passada ≈ 10 clientes</b>. Os vídeos de "US$ 300 mil/mês" no YouTube são de afiliados do GoHighLevel; o incentivo deles é fazer parecer fácil. Duas diferenças contra você: ele escolhia negócios <i>com</i> site fraco (quem nunca teve site muitas vezes escolheu não ter) e não construía o site antes. Uma a seu favor: com o site já pronto, a sua abertura é mais forte que a dele.</p>
   </div>
 </section>
 
