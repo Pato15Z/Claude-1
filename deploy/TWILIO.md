@@ -130,6 +130,9 @@ US$1.500 por ligação. Uma pessoa discando um número por vez não é robocall.
 
 ## SMS: o que falta
 
+**O passo a passo do registro, com os textos para colar, está em `deploy/A2P.md`.**
+
+
 O botão **"✉ mandar esse texto por SMS"** já está na mesma aba, embaixo do
 roteiro. O texto na tela é editável antes de mandar, e o que foi enviado fica
 guardado no campo de notas do lead.

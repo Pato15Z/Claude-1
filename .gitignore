@@ -20,3 +20,4 @@ tests/fixtures/sites/img/
 deploy/.env
 data/backups/
 data/ui_token.txt
+deploy/agency-site/out/
