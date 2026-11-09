@@ -58,8 +58,9 @@ CALL_SCRIPT = """ABERTURA (10 s)
 "Hi, is this {first_name}? This is {sender_name}. Quick one: I found {name} on Google, saw {rating_line}, and noticed {site_line}. So I built you a homepage from your own photos and reviews. Took me a day."
 
 PEDIR PERMISSÃO (o objetivo da ligação é só isso)
-"Can I text you a 30-second video of it? What's the best number, this one?"
-→ se sim: mande o texto abaixo na hora, ainda na ligação. Marque o toque como enviado.
+"Can I text you a 30-second video of it from {sender_business}? Just that and one follow-up. What's the best number, this one?"
+→ se sim: mande o texto abaixo na hora, ainda na ligação. Clique "atendeu e autorizou".
+  (O "sim" a essa pergunta é o consentimento que o registro A2P descreve. Sem ele, não mande SMS.)
 → "manda por email": "Sure, what's the best email?" → anote no lead, mande o email 1.
 → "não tenho interesse": "No problem, thanks for your time." Marque PERDIDO.
 
@@ -72,12 +73,16 @@ OBJEÇÕES
 "me manda e eu vejo" → "Will do. I'll follow up Thursday, sound good?"
 """
 
-AFTER_CALL_TEXT = """Hi {first_name}, {sender_name} here from the call. Here's the 30-sec video of {name}'s new homepage: {video_url}
+# A TCR rejeita campanha cuja mensagem nao nomeia a marca registrada, e a primeira
+# mensagem precisa dizer como parar. Por isso {sender_business} e o "STOP" no fim.
+AFTER_CALL_TEXT = """Hi {first_name}, {sender_name} with {sender_business}, from our call. Here's the 30-sec video of {name}'s new homepage: {video_url}
 Live page: {hero_url}
-$1,000 to launch it on your domain, $99/mo after. Reply "yes" and I'll set it up this week."""
+$1,000 to launch it on your domain, $99/mo after. Reply YES and I'll set it up this week. Reply STOP to opt out."""
 
 # Preencha nas Configurações do app (ou LEADPIPE_SENDER_NAME, LEADPIPE_SENDER_PHONE, LEADPIPE_VIDEO_URL)
 SENDER = {"sender_name": _os.environ.get("LEADPIPE_SENDER_NAME", "SEU NOME"),
+          # O nome exato da marca registrada no A2P (Trust Hub), nao o seu nome.
+          "sender_business": _os.environ.get("LEADPIPE_SENDER_BUSINESS", "NOME DA EMPRESA"),
           "sender_phone": _os.environ.get("LEADPIPE_SENDER_PHONE", "SEU TELEFONE"),
           "video_url": _os.environ.get("LEADPIPE_VIDEO_URL", "LINK DO VIDEO")}
 

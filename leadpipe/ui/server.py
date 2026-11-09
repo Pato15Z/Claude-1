@@ -92,7 +92,8 @@ def _summary(con):
 
 def _sender(con) -> dict:
     st = db.get_settings(con)
-    return {"sender_name": st.get("sender_name"), "sender_phone": st.get("sender_phone"), "video_url": st.get("video_url")}
+    return {"sender_name": st.get("sender_name"), "sender_business": st.get("sender_business"),
+            "sender_phone": st.get("sender_phone"), "video_url": st.get("video_url")}
 
 
 def _touch_flags(con, lead_id: int) -> dict:
@@ -196,7 +197,7 @@ DIALER_SQL = """
     SELECT l.* FROM leads l
     WHERE l.phone_e164 IS NOT NULL AND l.phone_e164 <> ''
       AND l.hero_path IS NOT NULL
-      AND l.status NOT IN ('FECHADO','DESCARTADO','RESPONDEU','CALL_AGENDADA')
+      AND l.status NOT IN ('FECHADO','DESCARTADO','RESPONDEU','CALL_AGENDADA','PERDIDO')
       AND NOT EXISTS (SELECT 1 FROM touches t
                       WHERE t.lead_id = l.id AND t.channel = 'ligacao' AND t.sent_at IS NOT NULL)
       AND (l.last_dial_at IS NULL OR substr(l.last_dial_at,1,10) < ?)
@@ -414,6 +415,10 @@ def _action(con, body: dict) -> dict:
             # e e o unico caso em que o SMS passa a ser legal para este lead.
             if not con.execute("SELECT 1 FROM touches WHERE lead_id=? AND touch_number=1", (lid,)).fetchone():
                 log_touch(con, lid, 1, "ligacao")
+        elif outcome == "nao_quer":
+            # Disse nao ao telefone: ligar de novo amanha e o jeito mais rapido de
+            # virar denuncia. Sai do funil.
+            db.transition(con, lid, "PERDIDO", "disse nao na ligacao")
         elif outcome == "numero_errado":
             db.transition(con, lid, "DESCARTADO", "numero errado na ligacao")
         return {"ok": True, "outcome": outcome}
@@ -480,7 +485,7 @@ def _action(con, body: dict) -> dict:
         got = import_folder(folder)
         return {"ok": True, "imported": [{"file": f, "style": k} for f, k in got], "styles": list_styles()}
     elif op == "settings":
-        db.set_settings(con, {k: v for k, v in (body.get("values") or {}).items() if k in ("sender_name", "sender_phone", "video_url")})
+        db.set_settings(con, {k: v for k, v in (body.get("values") or {}).items() if k in ("sender_name", "sender_business", "sender_phone", "video_url")})
     elif op == "client_set":
         field = body.get("field")
         if field not in ("setup_fee", "mrr", "provider", "setup_paid_at", "last_paid_at", "paid_until", "notes", "started_at"):
@@ -757,6 +762,15 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 res = twilio_voice.send_sms(body.get("to", ""), body.get("body", ""))
             except Exception as e:
+                # 21610: o numero respondeu STOP antes. A Twilio ja bloqueia o envio;
+                # aqui o lead sai do funil para ninguem tentar outro canal com ele.
+                if "21610" in str(e) and lid:
+                    con = db.connect()
+                    try:
+                        db.transition(con, lid, "PERDIDO", "respondeu STOP ao SMS")
+                    finally:
+                        con.close()
+                    return self._json({"error": "Esse número pediu STOP. Lead marcado como PERDIDO."}, 400)
                 return self._json({"error": str(e)}, 400)
             if lid:
                 con = db.connect()
