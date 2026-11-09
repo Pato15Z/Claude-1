@@ -327,6 +327,7 @@ def _run_action(body: dict) -> dict:
                 + sum([["--vertical", x.strip()] for x in (body.get("vertical") or "").split(",") if x.strip()], [])
                 + (["--max-places", str(int(body["max_places"]))] if body.get("max_places") else []),
         "expire": ["hero", "expire"],
+        "video": ["hero", "video"],
         "purge-foreign": ["db", "purge-foreign"],
         "backup": ["db", "backup"],
     }
@@ -338,6 +339,8 @@ def _run_action(body: dict) -> dict:
         if body.get("style"):
             args += ["--style", body["style"]]
         return {"job": _run_job(args)}
+    if what == "lead-video":  # refaz mesmo se já tem: quem clica no lead quer aquele vídeo agora
+        return {"job": _run_job(["hero", "video", "--id", str(int(body["lead_id"])), "--force"])}
     if what == "lead-enrich":
         return {"job": _run_job(["enrich", "run", "--id", str(int(body["lead_id"]))])}
     if what == "batch":

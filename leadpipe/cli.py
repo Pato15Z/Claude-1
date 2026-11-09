@@ -664,6 +664,31 @@ def hero_shot(lead_id: Optional[int] = typer.Argument(None, help="vazio = todos 
     asyncio.run(go())
 
 
+@hero_app.command("video")
+def hero_video(lead_id: Optional[int] = typer.Option(None, "--id", help="um lead só"),
+               limit: Optional[int] = typer.Option(None, "--limit", help="quantos, na ordem da fila de ligação"),
+               force: bool = typer.Option(False, "--force", help="refaz quem já tem vídeo, inclusive o gravado à mão")):
+    """Grava o vídeo de ~22 s de cada site (rolagem de celular + legenda) → data/hero_site/<slug>/video.mp4
+
+    Sem --id, pega quem tem site pronto e ainda não tem vídeo, começando por quem
+    tem mais avaliações. Leva ~30 s por lead.
+    """
+    from .hero import video
+
+    con = _con()
+    rows = video.pending(con, lead_id=lead_id, force=force, limit=limit)
+    if not rows:
+        con_.print("nada a fazer: todos os sites prontos já têm vídeo (use --force para refazer)"); raise typer.Exit(0)
+    if config.HERO_DOMAIN.startswith("SEUDOMINIO"):
+        con_.print("[yellow]LEADPIPE_HERO_DOMAIN não definido: o vídeo é gerado, mas o link público só existe depois de definir o domínio.[/yellow]")
+    con_.print(f"gravando {len(rows)} vídeo(s), ~{len(rows) * 30 // 60 + 1} min")
+    res = asyncio.run(video.build(con, rows, force=force,
+                                  progress=lambda l, mp4, msg: con_.print(f"  #{l['id']} {l['name']}: {msg}")))
+    con_.print(f"[green]{res['done']} feito(s)[/green], {res['skipped']} pulado(s), {res['errors']} erro(s)")
+    if res["errors"]:
+        raise typer.Exit(1)
+
+
 @hero_app.command("list")
 def hero_list():
     con = _con()

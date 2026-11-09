@@ -16,8 +16,13 @@ WORKDIR /app
 # reaproveita a camada do Chromium (que é a cara, ~400 MB).
 COPY pyproject.toml ./
 COPY leadpipe ./leadpipe
-RUN pip install . \
- && playwright install --with-deps chromium \
+# ffmpeg duas vezes, de propósito: o do Playwright grava a tela (lp hero video)
+# e o do sistema converte para MP4 H.264, o único formato que abre direto no
+# iPhone. Sem o segundo, a gravação acontece e o vídeo não sai.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/* \
+ && pip install . \
+ && playwright install --with-deps chromium ffmpeg \
  && rm -rf /root/.cache/pip
 
 EXPOSE 8090

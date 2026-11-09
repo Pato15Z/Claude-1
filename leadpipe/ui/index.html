@@ -238,6 +238,8 @@ td input.mini,td select.mini{padding:5px 7px;font-size:13px;width:auto;min-width
 <section id="tab-videos" hidden>
   <div class="card">
     <h2>Sites gerados: vídeo, email, Facebook, Instagram, follow-up</h2>
+    <div class="actions" style="margin-bottom:8px"><button class="btn sm" onclick="genVideos()">gerar vídeos automáticos (todos sem vídeo)</button>
+      <span class="muted" style="font-size:12px;align-self:center">~30 s por site, rolagem de celular com legenda. Um vídeo seu, gravado ou colado como link, nunca é trocado.</span></div>
     <p class="help">Ordem: grave o vídeo → email com o vídeo → DM no Facebook (dia 2) → DM no Instagram (dia 3) → email de follow-up (dia 6). Clique no quadrado para marcar (ou desmarcar). Toque no nome para ver os textos prontos e trocar o estilo do site.</p>
     <div class="scroll"><table id="vtable"><thead><tr><th>nome</th><th>vídeo</th><th>email</th><th>Facebook</th><th>Instagram</th><th>follow-up</th><th>respondeu</th><th>fechou</th><th class="hide-m">estilo do site</th><th class="hide-m">arquivo / link</th></tr></thead><tbody></tbody></table></div>
   </div>
@@ -309,6 +311,8 @@ td input.mini,td select.mini{padding:5px 7px;font-size:13px;width:auto;min-width
     <p>Canal que o lead não tem é pulado. A aba Follow-up mostra quem está devido hoje, com o texto pronto. Respondeu → botão "respondeu" (sai da fila). Sem resposta em 30 dias → "Derrubar heros" em Buscar leads.</p>
 
     <h3>4. O vídeo (20–30 s, gravado uma vez por lead)</h3>
+    <p><b>Automático:</b> Checklist → "gerar vídeos automáticos". O app abre cada site num celular simulado, rola do topo ao botão de ligar com quatro legendas em inglês e salva um MP4 de ~22 s dentro da pasta do site, então ele é publicado junto e o link entra sozinho nos textos. Não tem voz. Se quiser a sua voz, grave à mão como abaixo: vídeo seu nunca é trocado pelo automático.</p>
+    <p><b>À mão</b> (com a sua voz):</p>
     <ol>
       <li>Abra o site do lead no celular (ou no PC com a janela estreita) e grave a tela rolando: nome, nota, fotos, serviços, botão de ligar.</li>
       <li>Fale por cima (em inglês, texto fixo): "Hi {nome}, I built this for {negócio} from your Google photos and reviews. Tap to call, your services, your map. If you want it live on your domain this week, reply yes." Nada de proposta longa.</li>
@@ -783,13 +787,21 @@ async function loadVideos(){
     <td>${r.replied ? ck(true,true) : `<span class="check" onclick="act({op:'reply', lead_id:${r.id}})"></span>`}</td>
     <td>${r.closed ? ck(true,true) : `<span class="check" onclick="if(confirm('Marcar ${esc(r.name).replace(/'/g,'')} como fechado?')) act({op:'status', lead_id:${r.id}, status:'FECHADO'})"></span>`}</td>
     <td class="hide-m"><select class="mini" id="cs-${r.id}">${styleOpts(r.style_fixed ? r.style : 'auto')}</select> <label style="font-size:12px"><input type="checkbox" id="cc-${r.id}" ${r.opts && r.opts.show_cards ? 'checked' : ''}> cards</label> <button class="btn sec sm" onclick="quickStyle(${r.id})">regerar</button></td>
-    <td class="hide-m"><input type="file" accept="video/*" style="width:190px;padding:4px;font-size:12px" onchange="uploadVideo(${r.id}, this)"> ${r.video_path ? `<a href="/videos/${esc(r.video_path.split(/[\\\\/]/).pop())}" target="_blank">ver</a>` : ''} <input placeholder="ou link do vídeo" value="${esc(r.video_url||'')}" style="width:170px;padding:6px;font-size:12px" onchange="act({op:'video', lead_id:${r.id}, url:this.value})"></td>
+    <td class="hide-m"><input type="file" accept="video/*" style="width:190px;padding:4px;font-size:12px" onchange="uploadVideo(${r.id}, this)"> ${r.video_path ? `<a href="${/[\\\\/]hero_site[\\\\/]/.test(r.video_path) ? '/hero/' + esc(r.slug) + '/video.mp4' : '/videos/' + esc(r.video_path.split(/[\\\\/]/).pop())}" target="_blank">ver</a>` : ''} <button class="btn sec sm" title="gerar o vídeo automático deste site" onclick="genVideo(${r.id})">auto</button> <input placeholder="ou link do vídeo" value="${esc(r.video_url||'')}" style="width:170px;padding:6px;font-size:12px" onchange="act({op:'video', lead_id:${r.id}, url:this.value})"></td>
   </tr>`).join('') : '<tr><td colspan="10" class="muted">nenhum site gerado ainda. Gere na aba Leads (selecione e "Gerar site").</td></tr>';
 }
 async function quickStyle(id){
   const r = await post({op:'style', lead_id:id, style:$('#cs-' + id).value, opts:{show_cards: $('#cc-' + id).checked}, regen:true});
   if(r.error){ toast(r.error); return; }
   toast('regerando…'); pollJobs(() => loadVideos());
+}
+async function genVideos(){
+  const r = await post({op:'run', what:'video'}); if(r.error) return toast(r.error);
+  toast('gerando vídeos… acompanhe em Buscar leads → Saída'); pollJobs(() => { if(tab === 'videos') loadVideos(); });
+}
+async function genVideo(id){
+  const r = await post({op:'run', what:'lead-video', lead_id:id}); if(r.error) return toast(r.error);
+  toast('gerando o vídeo deste site (~30 s)…'); pollJobs(() => { if(tab === 'videos') loadVideos(); });
 }
 async function toggleVideo(id, done){ await post({op:'video', lead_id:id, done}); loadVideos(); loadPainel(); }
 async function uploadVideo(id, input){
